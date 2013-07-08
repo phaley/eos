@@ -36,6 +36,7 @@
 #define gridY                   256.0
 #define killDist                5.0 * 5.0
 #define boundaryDist            250.0
+#define foodCount        	50
 
 // precalculated lookup tables for the game
 double cosLookup[360];
@@ -78,6 +79,9 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     vector<double> swarmDensityCounts;
     vector<int> predatorAngle, preyAngle;
     
+    // set of all prey brains
+    tAgent swarm[swarmSize];
+
     // swarm agent x, y, angles
     double preyX[swarmSize], preyY[swarmSize], preyA[swarmSize];
     // swarm alive status
@@ -89,23 +93,67 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     // lookup table for distances between swarm agents and other swarm agents
     double preyDists[swarmSize][swarmSize];
     
+    // table with positions of all food
+    double foodX[foodCount], foodY[foodCount];
+    for(int i = 0; i < foodCount; ++i)
+    {
+	    double x = .9 * ((double)(randDouble * gridX * 2.0) - gridX);
+	    double y = .9 * ((double)(randDouble * gridY * 2.0) - gridY);
+	    for(int j = 0; j <= i; ++j)
+	    {
+            if(i==j)
+            {
+                foodX[i] = x;
+                foodY[j] = y;
+                break;
+            }
+            if(foodX[j] == x && foodY[j] == y)
+            {
+                --i;
+                break;
+            }
+        }
+    }
+
     // predator X, Y, and angle
-    double predX = (double)(randDouble * gridX * 2.0) - gridX;
-    double predY = (double)(randDouble * gridY * 2.0) - gridY;
-    double predA = (int)(randDouble * 360.0);
+    double predX, predY, startX, startY;
+    if(randDouble < 0.5)
+    {
+        startX = (double)(randDouble * gridX * 2.0) - gridX;
+        if(randDouble < 0.5)
+        {
+            startY = 0.0 - gridY;
+        }
+        else
+        {
+            startY = gridY;
+        }
+    }
+    else
+    {
+        startY = (double)(randDouble * gridY * 2.0) - gridY;
+        if(randDouble < 0.5)
+        {
+            startX = 0.0 - gridX;
+        }
+        else
+        {
+            startX = gridX;
+        }
+    }
+    predX = startX;
+    predY = startY;
+    predA = (int)(randDouble * 360.0);
     
     int delay = 0;
-    
+    bool hasEaten = false;
+
     // string containing the information to create a video of the simulation
     string reportString = "";
     
     // set up brain for clone swarm
-    swarmAgent->setupMegaPhenotype(swarmSize);
+	swarmAgent->setupMegaPhenotype(swarmSize);
     swarmAgent->fitness = 0.0;
-    
-    // set up predator brain
-    predatorAgent->setupPhenotype();
-    predatorAgent->fitness = 0.0;
     
     for(int i = 0; i < swarmSize; ++i)
     {
@@ -117,8 +165,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
             ++numTries;
             goodPos = true;
             
-            preyX[i] = 0.6 * ((double)(randDouble * gridX * 2.0) - gridX);
-            preyY[i] = 0.6 * ((double)(randDouble * gridY * 2.0) - gridY);
+            preyX[i] = 0.9 * ((double)(randDouble * gridX * 2.0) - gridX);
+            preyY[i] = 0.9 * ((double)(randDouble * gridY * 2.0) - gridY);
             
             for (int j = 0; j < i; ++j)
             {
