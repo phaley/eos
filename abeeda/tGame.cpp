@@ -31,14 +31,18 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             12
 #define predatorSensors         12
+#define preyStep                0.75
 #define predatorStep            2.25
+#define preyTurn                8.0
+#define predatorTurn            6.0
 #define attackDelay             5
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
 #define gridY                   256.0
 #define killDist                5.0 * 5.0
+#define forageDist              2.0 * 2.0
+#define broadcastDist           50.0 * 50.0
 #define boundaryDist            250.0
-#define foodCount        	50
 
 // precalculated lookup tables for the game
 double cosLookup[360];
@@ -88,6 +92,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     double preyX[swarmSize], preyY[swarmSize], preyA[swarmSize];
     // swarm alive status
     bool preyDead[swarmSize];
+    // swarm food status
+    int stomachs[swarmSize];
     
     // lookup table for distances between predator and swarm agents
     double predDists[swarmSize];
@@ -154,6 +160,13 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     bool hasEaten = false;
     bool onGrid = true;
 
+    // tables of agents to receive broadcast signals
+    bool broadcasts[swarmSize];
+    for(int i = 0; i < swarmSize; ++i)
+      {
+	broadcasts[i] = false;
+      }
+
     // string containing the information to create a video of the simulation
     string reportString = "";
     
@@ -190,7 +203,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
       }
     
     // initialize predator and prey lookup tables
-    recalcPredAndPreyDistTable(preyX, preyY, preyDead, predX, predY, predDists, preyDists);
+    recalcPredAndPreyAndFoodDistTable(preyX, preyY, preyDead, predX, predY, foodX, foodY, predDists, preyDists, foodDists);
     
     /*       BEGINNING OF SIMULATION LOOP       */
     
@@ -463,6 +476,13 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 {
                     swarmAgent->states[j + (i * maxNodes)] = 0;
                 }
+
+		// indicate that a signal was sent to the agent in the previous update
+		if(broadcasts[i])
+		  {
+		    swarmAgent->states[(preySensors * 3) + (i * maxNodes)] = 1;
+		    broadcasts[i] = false;
+		  }
                 
                 // indicate the presence of other visible agents in agent i's retina
                 for(int j = 0; j < swarmSize; ++j)
@@ -482,8 +502,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                             {
                                 double angle = calcAngle(preyX[i], preyY[i], preyA[i], preyX[j], preyY[j]);
                                 
-                                //here we have to map the angle into the sensor, btw: angle in degrees
-                                if(fabs(angle) < preyVisionAngle) // prey has a limited vision field infront of it
+                                // here we have to map the angle into the sensor, btw: angle in degrees
+                                if(fabs(angle) < preyVisionAngle) // prey has a limited vision field in front of it
                                 {
                                     swarmAgent->states[(int)(angle / (preyVisionAngle / ((double)preySensors / 2.0)) + ((double)preySensors / 2.0)) + (i * maxNodes)] = 1;
                                 }
@@ -491,7 +511,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                         }
                     }
                 }
-                
+
                 // indicate the presence of the predator in agent i's retina
                 double d = predDists[i];
                 
@@ -499,70 +519,115 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 {
                     double angle = calcAngle(preyX[i], preyY[i], preyA[i], predX, predY);
                     
-                    //here we have to map the angle into the sensor, btw: angle in degree
-                    // prey has a limited vision field infront of it
+                    // here we have to map the angle into the sensor, btw: angle in degree
+                    // prey has a limited vision field in front of it
                     if(fabs(angle) < preyVisionAngle)
                     {
-                        swarmAgent->states[preySensors + (int)(angle / (preyVisionAngle / ((double)preySensors / 2.0)) + ((double)preySensors / 2.0)) + (i * maxNodes)] = 1;
+		      swarmAgent->states[preySensors + (int)(angle / (preyVisionAngle / ((double)preySensors / 2.0)) + ((double)preySensors / 2.0)) + (i * maxNodes)] = 1;
                     }
                 }
+		
+		// indicate the presence of food in agent i's retina
+		for(int j = 0; j < foodCount; ++j)
+		  {
+		    double d = foodDists[i][j];
+		    // ignore if the food is too far
+		    if(d < preyVisionRange)
+		      {
+			// ignore if agent i is not facing the food
+			if(calcDistanceSquared(preyX[i] + cosLookup[(int)preyA[i]], preyY[i] + sinLookup[(int)preyA[i]], foodX[j], foodY[j]) < d)
+			  {
+			    double angle = calcAngle(preyX[i], preyY[i], preyA[i], foodX[j], foodY[j]);
+			    // mapping the angle into the appropriate sensor
+			    if(fabs(angle) < preyVisionAngle)
+			      {
+				swarmAgent->states[(preySensors * 2) + (int)(angle / (preyVisionAngle / ((double) preySensors / 2.0)) + ((double) preySensors / 2.0)) + (i * maxNodes)] = 1;
+			      }
+			  }
+		      }
+		  }
             }
         }
         
-        // activate the swarm agent's brains
+        // activate the swarm agents' brains
         swarmAgent->updateStates();
         
         // activate each swarm agent's brain, determine its action for this update, and update its position and angle
         for(int i = 0; i < swarmSize; ++i)
-        {
+	  {
             if (!preyDead[i])
-            {
+	      {
+		bool broadcast = !!(swarmAgent->states[(maxNodes - 3) + (i * maxNodes)]);
+		// if the current agent wants to broadcast
+		if(broadcast)
+		  {
+		    // find the alive prey within range
+		    for(int j = 0; j < swarmSize; ++j)
+		      {
+			if(!preyDead[j])
+			  {
+			    if(preyDists[i][j] < broadcastDist)
+			      {
+				broadcasts[j] = true;
+			      }
+			  }
+		      }
+		  }
+		
                 //                                  node 31                                                         node 30
                 int action = ((swarmAgent->states[(maxNodes - 1) + (i * maxNodes)] & 1) << 1) + (swarmAgent->states[(maxNodes - 2) + (i * maxNodes)] & 1);
-                
+		
                 switch(action)
-                {
-                        // stand still and forage if food is nearby
-                    case 0:
-                        break;
-                        
-                        // turn 8 degrees right
-                    case 1:
-                        preyA[i] += 8.0;
-                        
-                        while(preyA[i] >= 360.0)
-                        {
-                            preyA[i] -= 360.0;
-                        }
-                        
-                        preyX[i] += cosLookup[(int)preyA[i]] * 0.75;
-                        preyY[i] += sinLookup[(int)preyA[i]] * 0.75;
-                        
-                        break;
-                        
-                        // turn 8 degrees left
-                    case 2:
-                        preyA[i] -= 8.0;
-                        while(preyA[i] < 0.0)
-                        {
-                            preyA[i] += 360.0;
-                        }
-                        
-                        preyX[i] += cosLookup[(int)preyA[i]] * 0.75;
-                        preyY[i] += sinLookup[(int)preyA[i]] * 0.75;
-                        
-                        break;
-                        
-                        // move straight ahead
-                    case 3:
-                        preyX[i] += cosLookup[(int)preyA[i]] * 0.75;
-                        preyY[i] += sinLookup[(int)preyA[i]] * 0.75;
-                        
-                        break;
-                        
-                    default:
-                        break;
-                }
+		  {
+		    // stand still and forage if at least one food is nearby
+		  case 0:
+		    for(int j = 0; j < foodCount; ++j)
+		      {
+			if(foodDists[i][j] < forageDist)
+			  {
+			    ++stomachs[i];
+			    break;
+			  }
+		      }
+		    break;
+                    
+		    // turn 8 degrees right
+		  case 1:
+		    preyA[i] += preyTurn;
+                    
+		    while(preyA[i] >= 360.0)
+		      {
+			preyA[i] -= 360.0;
+		      }
+		    
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+                    
+		    break;
+			
+		    // turn 8 degrees left
+		  case 2:
+		    preyA[i] -= preyTurn;
+		    while(preyA[i] < 0.0)
+		      {
+			preyA[i] += 360.0;
+		      }
+		    
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+                    
+		    break;
+                    
+		    // move straight ahead
+		  case 3:
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+                    
+		    break;
+                    
+		  default:
+		    break;
+		  }
                 
                 // keep position within boundary
                 applyBoundary(preyX[i]);
@@ -571,7 +636,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
         }
         
         // recalculate both the predator and prey distances lookup tables since the entire swarm has moved
-        recalcPredAndPreyDistTable(preyX, preyY, preyDead, predX, predY, predDists, preyDists);
+        recalcPredAndPreyAndFoodDistTable(preyX, preyY, preyDead, predX, predY, foodX, foodY, predDists, preyDists, foodDists);
         
         /*       END OF SWARM UPDATE       */
         
@@ -687,47 +752,6 @@ void tGame::recalcPredDistTable(double preyX[], double preyY[], bool preyDead[],
     }
 }
 
-// recalculates only the food distance lookup table
-void tGame::recalcFoodDistTable(double preyX[], double preyY[], bool preyDead[],
-				double foodX[], double foodY[],
-				double foodDists[swarmSize][foodCount])
-{
-  for(int i = 0; i < swarmSize; ++i)
-    {
-      if(!preyDead[i])
-	{
-	  for(int j = 0; j < foodCount; ++j)
-	    {
-	      foodDists[i][j] = calcDistanceSquared(preyX[i], preyY[i], food[j], food[j]);
-	    }
-	}
-    }
-}
-
-// recalculates the predator and prey distance lookup tables
-void tGame::recalcPredAndPreyDistTable(double preyX[], double preyY[], bool preyDead[],
-                                       double predX, double predY,
-                                       double predDists[swarmSize], double preyDists[swarmSize][swarmSize])
-{
-    for (int i = 0; i < swarmSize; ++i)
-    {
-        if (!preyDead[i])
-        {
-            predDists[i] = calcDistanceSquared(predX, predY, preyX[i], preyY[i]);
-            preyDists[i][i] = 0.0;
-            
-            for (int j = i + 1; j < swarmSize; ++j)
-            {
-                if (!preyDead[j])
-                {
-                    preyDists[i][j] = calcDistanceSquared(preyX[i], preyY[i], preyX[j], preyY[j]);
-                    preyDists[j][i] = preyDists[i][j];
-                }
-            }
-        }
-    }
-}
-
 // recalculates the predator, prey, and food distance lookup tables
 void tGame::recalcPredAndPreyAndFoodDistTable(double preyX[], double preyY[], bool preyDead[],
 					      double predX, double predY, double foodX[], double foodY[],
@@ -748,7 +772,7 @@ void tGame::recalcPredAndPreyAndFoodDistTable(double preyX[], double preyY[], bo
 		preyDists[j][i] = preyDists[i][j];
 	      }
 	    }
-	  for(int k = 0; k < foodCount; ++k;)
+	  for(int k = 0; k < foodCount; ++k)
 	    {
 	      foodDists[i][k] = calcDistanceSquared(preyX[i], preyY[i], foodX[k], foodY[k]);
 	    }
