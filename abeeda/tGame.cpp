@@ -27,9 +27,9 @@
 
 // simulation-specific constants
 #define preyVisionRange         100.0 * 100.0
-#define preyVisionAngle         180.0 / 2.0
+#define preyVisionAngle         360.0 / 2.0
 #define predatorVisionRange     200.0 * 200.0
-#define preySensors             12
+#define preySensors             24
 #define predatorSensors         12
 #define preyStep                1.50
 #define predatorStep            5.00
@@ -41,7 +41,7 @@
 #define gridY                   256.0
 #define killDist                5.0 * 5.0
 #define forageDist              2.0 * 2.0
-#define broadcastDist           50.0 * 50.0
+#define broadcastDist           100.0 * 100.0
 #define boundaryDist            250.0
 
 // precalculated lookup tables for the game
