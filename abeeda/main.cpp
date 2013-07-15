@@ -30,6 +30,7 @@
 #include <time.h>
 #include <iostream>
 #include <dirent.h>
+#include <fstream>
 
 #include "globalConst.h"
 #include "tHMM.h"
@@ -60,6 +61,8 @@ char     *endptr;                /*  for strtol()              */
 void    setupBroadcast(void);
 void    doBroadcast(string data);
 string  findBestRun(tAgent *swarmAgent, tAgent *predatorAgent);
+
+ofstream outputFile;
 
 using namespace std;
 
@@ -287,6 +290,7 @@ int main(int argc, char *argv[])
         string bestString = findBestRun(swarmAgent, predatorAgent);
         bestString.append("X");
         doBroadcast(bestString);
+	outputFile.close();
         exit(0);
     }
     
@@ -375,7 +379,7 @@ int main(int argc, char *argv[])
                 cerr << "unmatched file: " << it->second[0] << " " << it->second[1] << endl;
             }
         }
-        
+        outputFile.close();
         exit(0);
     }
     
@@ -624,6 +628,8 @@ int main(int argc, char *argv[])
         }
     }
     
+    outputFile.close();
+
     fclose(LOD);
     
     return 0;
@@ -650,6 +656,7 @@ string findBestRun(tAgent *swarmAgent, tAgent *predatorAgent)
 
 void setupBroadcast(void)
 {
+  /*
     port = ECHO_PORT;
 	if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
     {
@@ -657,12 +664,14 @@ void setupBroadcast(void)
     }
 	/*  Set all bytes in socket address structure to
 	 zero, and fill in the relevant data members   */
+  /*
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port        = htons(port);
 	/*  Bind our socket addresss to the 
 	 listening socket, and call listen()  */
+  /*
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 )
     {
 		fprintf(stderr, "ECHOSERV: Error calling bind()\n");
@@ -671,10 +680,13 @@ void setupBroadcast(void)
     {
 		fprintf(stderr, "ECHOSERV: Error calling listen()\n");
     }
+  */
+  outputFile.open("../EOS_Monitor/testrun.txt");
 }
 
 void doBroadcast(string data)
 {
+  /*
     if ( (conn_s = accept(list_s, NULL, NULL) ) < 0 )
     {
         fprintf(stderr, "ECHOSERV: Error calling accept()\n");
@@ -685,4 +697,6 @@ void doBroadcast(string data)
     {
         fprintf(stderr, "ECHOSERV: Error calling close()\n");
     }
+  */
+  outputFile << data << endl;
 }

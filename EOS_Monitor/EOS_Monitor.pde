@@ -192,11 +192,13 @@ void draw()
  
       //text( "Connection established to " + s.getInetAddress(), 10, 30 );
  
-      in = new BufferedReader( new InputStreamReader( s.getInputStream() ) );
+      //in = new BufferedReader( new InputStreamReader( s.getInputStream() ) );
+      in = new BufferedReader( new FileReader ( new File ( "testrun.txt" ) ) );
+
       //out = new PrintStream( s.getOutputStream() );
       data=in.readLine();
       L=splitTokens(data,"N");
-//      print(data);
+      //print(data);
       in.close();
       //out.close();
       currentStep=0;
