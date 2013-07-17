@@ -1,9 +1,12 @@
 import processing.video.*;
 
 // the following parameters must fit the c++ code:
-int totalNrOfUpdates=1999;
+int updates=2000;
+int generation = 0;
 
 MovieMaker mm;
+
+BufferedReader in;
 
 int[] x=new int[4];
 int[] y=new int[4];
@@ -16,6 +19,7 @@ color[] c=new color[4];
 int currentStep=-1;
 
 String data;
+String[] K;
 String[] L;
 PFont f;
 
@@ -48,7 +52,7 @@ void drawArea(){
      
      for(int t=0;t<1;t++)
      {
-      String[] P=splitTokens(L[currentStep+t],"=");
+      String[] P=splitTokens(L[currentStep+(generation*updates)],"=");
       float minX=0.0,minY=0.0,maxX=0.0,maxY=0.0;
       float[] x=new float[P.length];
       float[] y=new float[P.length];
@@ -179,33 +183,47 @@ void keyReleased(){
  
 void draw()
 {
+
+  
   if(currentStep==-1){
-    BufferedReader in;
     PrintStream out;
-    Socket s;
+    //Socket s;
+    
     
     try{
-      String host = "127.0.0.1";   // change
+      //String host = "127.0.0.1";   // change
 
       //text( "Connecting to " + host + " ...", 10, 20 );
-      s = new Socket( host, 2002 );
+      //s = new Socket( host, 2002 );
  
       //text( "Connection established to " + s.getInetAddress(), 10, 30 );
  
       //in = new BufferedReader( new InputStreamReader( s.getInputStream() ) );
-      in = new BufferedReader( new FileReader ( new File ( "testrun.txt" ) ) );
-
+  
+       if(in == null)
+        {
+          in  = new BufferedReader( new FileReader ( new File ( "C:\\Users\\Patrick\\Documents\\GitHub\\eos\\EOS_Monitor\\many-eyes_vid.txt" ) ) );
+          String line;
+          while((line = in.readLine()) != null)
+          {
+            data += "\\n" + line;
+          }
+           data += "x";
+           L=splitTokens(data,"N|X|\\n");
+           in.close();
+        }
+    
       //out = new PrintStream( s.getOutputStream() );
-      data=in.readLine();
-      L=splitTokens(data,"N");
-      //print(data);
-      in.close();
+
+      //System.out.println(data);
+      
       //out.close();
       currentStep=0;
+      showLegend = true;
     }
     catch ( Exception e )
     {
-      //println( "Error" + e );
+      println( "Error" + e );
     }
   }
   else{
@@ -214,11 +232,12 @@ void draw()
     updateArea();
     currentStep++;
     if(data!=null)
-    if(currentStep>=totalNrOfUpdates)
+    if(currentStep>=updates)
     {
       currentStep=-1;
-      
-      if(data.indexOf("X") != -1)
+      generation++;
+            
+      if(L[generation * updates + 1].equals("x"))
       {
         mm.finish();
         exit();

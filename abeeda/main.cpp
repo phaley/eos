@@ -31,6 +31,7 @@
 #include <iostream>
 #include <dirent.h>
 #include <fstream>
+#include <sstream>
 
 #include "globalConst.h"
 #include "tHMM.h"
@@ -69,7 +70,7 @@ using namespace std;
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
 int     populationSize              = 100;
-int     totalGenerations            = 252;
+int     totalGenerations            = 6;
 tGame   *game                       = NULL;
 
 bool    make_interval_video         = false;
@@ -379,7 +380,8 @@ int main(int argc, char *argv[])
                 cerr << "unmatched file: " << it->second[0] << " " << it->second[1] << endl;
             }
         }
-        outputFile.close();
+	outputFile.close();
+
         exit(0);
     }
     
@@ -679,9 +681,9 @@ void setupBroadcast(void)
     if ( listen(list_s, LISTENQ) < 0 )
     {
 		fprintf(stderr, "ECHOSERV: Error calling listen()\n");
-    }
+vvv    }
   */
-  outputFile.open("../EOS_Monitor/testrun.txt");
+  outputFile.open("../EOS_Monitor/many-eyes_vid.txt", ios::app);
 }
 
 void doBroadcast(string data)

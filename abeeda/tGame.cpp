@@ -31,11 +31,11 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                1.50
-#define predatorStep            5.00
+#define preyStep                3.50
+#define predatorStep            2.50
 #define preyTurn                8.0
 #define predatorTurn            6.0
-#define attackDelay             2
+#define attackDelay             0
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
 #define gridY                   256.0
@@ -47,7 +47,7 @@
 // precalculated lookup tables for the game
 double cosLookup[360];
 double sinLookup[360];
-double atan2Lookup[(int)gridY * 4][(int)gridX * 4];
+//double atan2Lookup[(int)gridY * 4][(int)gridX * 4];
 
 tGame::tGame()
 {
@@ -57,7 +57,7 @@ tGame::tGame()
         cosLookup[i] = cos((double)i * (cPI / 180.0));
         sinLookup[i] = sin((double)i * (cPI / 180.0));
     }
-    for (int i = 0; i < (int)(gridY * 4); ++i)
+    /*for (int i = 0; i < (int)(gridY * 4); ++i)
     {
       for (int j = 0; j < (int)(gridX * 4); ++j)
         {
@@ -67,7 +67,7 @@ tGame::tGame()
 	      atan2Lookup[i][j] += 360;
 	    }
         }
-    }
+    }*/
 }
 
 tGame::~tGame() { }
@@ -237,10 +237,13 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
         if(report)
         {
             // report X, Y, angle of predator
-            char text[1000];
-            sprintf(text,"%f,%f,%f,%d,%d,%d=", predX, predY, predA, 255, 0, 0);
-            reportString.append(text);
-            
+	  if(onGrid)
+	    {
+	      char text[1000];
+	      sprintf(text,"%f,%f,%f,%d,%d,%d=", predX, predY, predA, 255, 0, 0);
+	      reportString.append(text);
+	    }            
+
             // compute center of swarm
             /*double cX = 0.0, cY = 0.0;
             calcSwarmCenter(preyX,preyY, preyDead, cX, cY);
@@ -262,6 +265,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                     reportString.append(text);
                 }
             }
+	    for(int i = 0; i < foodCount; ++i)
+	      {
+		char text[1000];
+		sprintf(text,"%f,%f,%f,%d,%d,%d=", foodX[i], foodY[i], 0, 0, 255, 0);
+		reportString.append(text);
+	      }
             reportString.append("N");
             
         }
@@ -380,7 +389,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
 	// if preadtor is not between attacks
 	if(onGrid)
-	  {;
+	  {
 	    // if the predator has returned home after eating
 	    if(hasEaten && calcDistanceSquared(startX, startY, predX, predY) < killDist)
 	      {
@@ -423,7 +432,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		    else
 		      {
 			// move toward nearest prey
-			predA = atan2Lookup[(int)(preyY[target] - predY + gridY * 2)][(int)(preyX[target] - predX + gridX * 2)];
+			double angleDiff = calcAngle(predX, predY, predA, preyX[target], preyY[target]);
+			int sign = (angleDiff == 0 ? 0 : (angleDiff < 0 ? 1 : -1));
+			predA += sign * predatorTurn;
+			predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
 			predX += cosLookup[(int)predA] * predatorStep;
 			predY += sinLookup[(int)predA] * predatorStep;
 		      }
@@ -431,8 +443,11 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		// if the predator is returning home
 		else
 		  {
-		    // move toward home		
-		    predA = atan2Lookup[(int)(startY-predY + gridY * 2)][(int)(startX-predX + gridX * 2)];
+		    // move toward home
+		    double angleDiff = calcAngle(predX, predY, predA, startX, startY);
+		    int sign = (angleDiff == 0 ? 0 : (angleDiff < 0 ? 1 : -1));
+		    predA += sign * predatorTurn;
+		    predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
 		    predX += cosLookup[(int)predA] * predatorStep;
 		    predY += sinLookup[(int)predA] * predatorStep;
 		  }
@@ -469,6 +484,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			startX = 0.9 * gridX;
 		      }
 		  }
+		predX = startX;
+		predY = startY;
 		hasEaten = false;
 		onGrid = true;
 	      }
