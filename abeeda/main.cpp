@@ -70,7 +70,7 @@ using namespace std;
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
 int     populationSize              = 100;
-int     totalGenerations            = 6;
+int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
 
 bool    make_interval_video         = false;
@@ -83,7 +83,7 @@ bool    display_directory           = false;
 bool    make_logic_table            = false;
 bool    make_dot_pred               = false;
 bool    make_dot_swarm              = false;
-double  safetyDist                  = 30.0 * 30.0;
+double  safetyDist                  = 20.0 * 20.0;
 double  predatorVisionAngle         = 180.0 / 2.0;
 int     killDelay                   = 10;
 double  confusionMultiplier         = 1.0;

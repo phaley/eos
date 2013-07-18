@@ -119,48 +119,51 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     double foodX[foodCount], foodY[foodCount];
     for(int i = 0; i < foodCount; ++i)
     {
-      double x = .9 * ((double)(randDouble * gridX * 2.0) - gridX);
-      double y = .9 * ((double)(randDouble * gridY * 2.0) - gridY);
-      for(int j = 0; j <= i; ++j)
-	{
-	  if(i==j)
-            {
-	      foodX[i] = x;
-	      foodY[i] = y;
-	      break;
-            }
-	  if(foodX[j] == x && foodY[j] == y)
-            {
-	      --i;
-	      break;
-            }
-        }
+
+      bool goodPos = true;
+
+      do {
+
+	goodPos = true;
+
+	foodX[i] = .9 * ((double)(randDouble * gridX * 2.0) - gridX);
+	foodY[i] = .9 * ((double)(randDouble * gridY * 2.0) - gridY);
+
+	for(int j = 0; j < i; ++j)
+	  {
+	    if(calcDistanceSquared(foodX[i], foodY[i], foodX[j], foodY[j]) < safetyDist)
+	      {
+		goodPos = false;
+		break;
+	      }
+	  }
+      } while(!goodPos);
     }
 
     // predator X, Y, and angle
     double predX, predY, startX, startY, predA;
     if(randDouble < 0.5)
       {
-        startX = 0.9 * ((double)(randDouble * gridX * 2.0) - gridX);
+        startX = (double)(randDouble * boundaryDist * 2.0) - boundaryDist;
         if(randDouble < 0.5)
 	  {
-            startY = -0.9 * gridY;
+            startY = -boundaryDist;
 	  }
         else
 	  {
-            startY = 0.9 * gridY;
+            startY = boundaryDist;
 	  }
       }
     else
       {
-        startY = 0.9 * (double)(randDouble * gridY * 2.0) - gridY;
+        startY = (double)(randDouble * boundaryDist * 2.0) - boundaryDist;
         if(randDouble < 0.5)
 	  {
-            startX = -0.9 * gridX;
+            startX = -boundaryDist;
 	  }
         else
 	  {
-            startX = 0.9 * gridX;
+            startX = boundaryDist;
 	  }
       }
     predX = startX;
@@ -187,12 +190,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     
     for(int i = 0; i < swarmSize; ++i)
       {
-        int numTries = 0;
+        //int numTries = 0;
         bool goodPos = true;
         
         do
 	  {
-            ++numTries;
+            //++numTries;
             goodPos = true;
             
             preyX[i] = 0.9 * ((double)(randDouble * gridX * 2.0) - gridX);
@@ -207,10 +210,25 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 }
             }
             
-	  } while (!goodPos && numTries < 10);
+	    if(goodPos)
+	      {
+		for(int j = 0; j < foodCount; j++)
+		  {
+		    if(calcDistanceSquared(preyX[i], preyY[i], foodX[j], foodY[j]) < safetyDist)
+		      {
+			goodPos = false;
+			break;
+		      }
+		  }
+	      }
+
+	  } while (!goodPos /*&& numTries < 10*/);
 	
         preyA[i] = (int)(randDouble * 360.0);
         
+	preyDead[i] = false;
+
+	/*
 	if(!goodPos || numTries == 10)
 	  {
 	    preyDead[i] = true;
@@ -219,6 +237,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	  {
 	    preyDead[i] = false;
 	  }
+	*/
       }
     
     // initialize predator and prey lookup tables
@@ -462,26 +481,26 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		// choose a new home for the predator
 		if(randDouble < 0.5)
 		  {
-		    startX = 0.9 * (double)(randDouble * gridX * 2.0) - gridX;
+		    startX = (double)(randDouble * boundaryDist * 2.0) - boundaryDist;
 		    if(randDouble < 0.5)
 		      {
-			startY = -0.9 * gridY;
+			startY = -boundaryDist;
 		      }
 		    else
 		      {
-			startY = 0.9 * gridY;
+			startY = boundaryDist;
 		      }
 		  }
 		else
 		  {
-		    startY = 0.9 * (double)(randDouble * gridY * 2.0) - gridY;
+		    startY = (double)(randDouble * boundaryDist * 2.0) - boundaryDist;
 		    if(randDouble < 0.5)
 		      {
-			startX = -0.9 * gridX;
+			startX = -boundaryDist;
 		      }
 		    else
 		      {
-			startX = 0.9 * gridX;
+			startX = boundaryDist;
 		      }
 		  }
 		predX = startX;

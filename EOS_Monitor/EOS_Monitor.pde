@@ -3,6 +3,7 @@ import processing.video.*;
 // the following parameters must fit the c++ code:
 int updates=2000;
 int generation = 0;
+int videospan = 50;
 
 MovieMaker mm;
 
@@ -35,6 +36,9 @@ void drawArea(){
   {
     //if(currentStep==1)
      background(0);
+
+      fill(255,255,255);
+      text("Generation: " + (generation + 1) * videospan, 10, height - 10);
 
      if (showLegend && currentStep < 200)
      {
