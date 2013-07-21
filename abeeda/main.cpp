@@ -83,7 +83,7 @@ bool    display_directory           = false;
 bool    make_logic_table            = false;
 bool    make_dot_pred               = false;
 bool    make_dot_swarm              = false;
-double  safetyDist                  = 20.0 * 20.0;
+double  safetyDist                  = 30.0 * 30.0;
 double  predatorVisionAngle         = 180.0 / 2.0;
 int     killDelay                   = 10;
 double  confusionMultiplier         = 1.0;
@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
 {
 	vector<tAgent*> swarmAgents, SANextGen, predatorAgents, PANextGen;
 	tAgent *swarmAgent = NULL, *predatorAgent = NULL, *bestSwarmAgent = NULL, *bestPredatorAgent = NULL;
-	double swarmMaxFitness = 0.0, predatorMaxFitness = 0.0;
+	double swarmMaxFitness = 0.0, predatorMaxFitness =
+ 0.0;
     string LODFileName = "", swarmGenomeFileName = "", predatorGenomeFileName = "", inputGenomeFileName = "";
     string swarmDotFileName = "", predatorDotFileName = "", logicTableFileName = "";
     int displayDirectoryArgvIndex = 0;
