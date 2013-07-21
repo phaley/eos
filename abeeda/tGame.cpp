@@ -177,10 +177,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     bool predatorOnGrid = true;
 
     // tables of agents to receive broadcast signals
-    bool broadcasts[swarmSize];
+    bool receivedBroadcast[swarmSize];
+    bool sentBroadcast[swarmSize];
     for(int i = 0; i < swarmSize; ++i)
       {
-	broadcasts[i] = false;
+	receivedBroadcast[i] = false;
+	sentBroadcast[i] = false;
       }
 
     // string containing the information to create a video of the simulation
@@ -285,7 +287,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 {
                     char text[1000];
                     
-		    if(vigilance[i])
+		    if(sentBroadcast[i])
 		      {
 			sprintf(text,"%f,%f,%f,%d,%d,%d=", preyX[i], preyY[i], preyA[i], 0, 0, 255);
 		      }
@@ -553,10 +555,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 }
 
 		// indicate that a signal was sent to the agent in the previous update
-		if(broadcasts[i])
+		if(receivedBroadcast[i])
 		  {
 		    swarm[i]->states[preySensors * 3] = 1;
-		    broadcasts[i] = false;
+		    receivedBroadcast[i] = false;
 		  }
                 
                 // indicate the presence of other visible agents in agent i's retina
@@ -647,6 +649,9 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		// if the current agent wants to broadcast
 		if(broadcast)
 		  {
+		    //register that the individual chose to broadcast
+		    sentBroadcast[i] = true;
+
 		    // find the alive prey within range
 		    for(int j = 0; j < swarmSize; ++j)
 		      {
@@ -654,10 +659,15 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			  {
 			    if(preyDists[i][j] < broadcastDist)
 			      {
-				broadcasts[j] = true;
+				receivedBroadcast[j] = true;
 			      }
 			  }
 		      }
+		  }
+		else
+		  {
+		    //register that the individual chose not to broadcast
+		    sentBroadcast[i] = false;
 		  }
 		
                 //                                  node 31                                                         node 30
