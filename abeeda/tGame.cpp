@@ -31,15 +31,15 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                3.50
-#define predatorStep            2.50
-#define preyTurn                8.0
-#define predatorTurn            6.0
+#define preyStep                3.00
+#define predatorStep            1.50
+#define preyTurn                30
+#define predatorTurn            15
 #define attackDelay             0
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
 #define gridY                   256.0
-#define killDist                5.0 * 5.0
+#define killDist                3.0 * 3.0
 #define forageDist              2.0 * 2.0
 #define broadcastDist           100.0 * 100.0
 #define boundaryDist            250.0
@@ -143,7 +143,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     */
 
     // predator X, Y, and angle
-    double predX, predY, startX, startY, predA;
+    double predX, predY, startX, startY, predA, lastX, lastY;
     if(randDouble < 0.5)
       {
         startX = (double)(randDouble * boundaryDist * 2.0) - boundaryDist;
@@ -170,7 +170,9 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
       }
     predX = startX;
     predY = startY;
-    predA = (int)(randDouble * 360.0);
+    lastX = -500;
+    lastY = -500;
+    predA = randDouble * 359.0;
     
     int predatorDelay = 0;
     bool predatorHasEaten = false;
@@ -236,7 +238,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
 	  } while (!goodPos && numTries < 10);
 	
-        preyA[i] = (int)(randDouble * 360.0);
+        preyA[i] = (int)(randDouble * 359.0);
         
 	if(!goodPos)
 	  {
@@ -425,6 +427,17 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	// if preadtor is not between attacks
 	if(predatorOnGrid)
 	  {
+	    //check if the predator is motionless
+	    /*
+	    if(predX == lastX && predY == lastY)
+	      {
+		printf("Broke at: %d\nxPos: %f, yPos: %f, Angle: %f\nOnGrid: %s, HasEaten: %s\n", step, predX, predY, predA, (predatorOnGrid ? "True" : "False"), (predatorHasEaten ? "True" : "False"));
+		break;
+	      }
+	    */
+	    lastX = predX;
+	    lastY = predY;
+
 	    // if the predator has returned home after eating
 	    if(predatorHasEaten && calcDistanceSquared(startX, startY, predX, predY) < killDist)
 	      {
@@ -477,7 +490,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			    int sign = (angleDiff < 0 ? 1 : -1);
 			    predA += sign * predatorTurn;
 			  }			    
-			predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
+			predA += (predA < 0 ? 360 : (predA >= 360 ? -360 : 0));
 			predX += cosLookup[(int)predA] * predatorStep;
 			predY += sinLookup[(int)predA] * predatorStep;
 		      }
@@ -496,7 +509,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			int sign = (angleDiff < 0 ? 1 : -1);
 			predA += sign * predatorTurn;
 		      }
-		    predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
+		    predA += (predA < 0 ? 360 : (predA >= 360 ? -360 : 0));
 		    predX += cosLookup[(int)predA] * predatorStep;
 		    predY += sinLookup[(int)predA] * predatorStep;
 		  }
@@ -535,6 +548,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		  }
 		predX = startX;
 		predY = startY;
+
+		lastX = -500;
+		lastY = -500;
+
+		predA = randDouble * 359.0;
+
 		predatorHasEaten = false;
 		predatorOnGrid = true;
 	      }
