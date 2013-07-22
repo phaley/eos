@@ -468,8 +468,15 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      {
 			// move toward nearest prey
 			double angleDiff = calcAngle(predX, predY, predA, preyX[target], preyY[target]);
-			int sign = (angleDiff == 0 ? 0 : (angleDiff < 0 ? 1 : -1));
-			predA += sign * predatorTurn;
+			if(abs(angleDiff) < predatorTurn)
+			  {
+			    predA += angleDiff;
+			  }
+			else
+			  {
+			    int sign = (angleDiff < 0 ? 1 : -1);
+			    predA += sign * predatorTurn;
+			  }			    
 			predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
 			predX += cosLookup[(int)predA] * predatorStep;
 			predY += sinLookup[(int)predA] * predatorStep;
@@ -480,8 +487,15 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		  {
 		    // move toward home
 		    double angleDiff = calcAngle(predX, predY, predA, startX, startY);
-		    int sign = (angleDiff == 0 ? 0 : (angleDiff < 0 ? 1 : -1));
-		    predA += sign * predatorTurn;
+		    if(abs(angleDiff) < predatorTurn)
+		      {
+			predA += angleDiff;
+		      }
+		    else
+		      {
+			int sign = (angleDiff < 0 ? 1 : -1);
+			predA += sign * predatorTurn;
+		      }
 		    predA += (predA < 0 ? 360 : (predA > 360 ? -360 : 0));
 		    predX += cosLookup[(int)predA] * predatorStep;
 		    predY += sinLookup[(int)predA] * predatorStep;
