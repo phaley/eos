@@ -32,9 +32,8 @@
 #define preySensors             24
 #define predatorSensors         12
 #define preyStep                3.00
-#define predatorStep            1.50
-#define preyTurn                30
-#define predatorTurn            15
+#define predatorStep            3.00
+#define preyTurn                10
 #define attackDelay             0
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
@@ -177,6 +176,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     int predatorDelay = 0;
     bool predatorHasEaten = false;
     bool predatorOnGrid = true;
+
+    // define the predator's maximum turning radius based on speed and kill distance
+    double predatorTurn = floor(2 * asin(predatorStep / (2 * sqrt(killDist))) * 180 / cPI);
+    predatorTurn += (predatorTurn < 0 ? 360 : 0);
 
     // tables of agents to receive broadcast signals
     bool receivedBroadcast[swarmSize];
