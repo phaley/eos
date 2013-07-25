@@ -684,7 +684,7 @@ void setupBroadcast(void)
 		fprintf(stderr, "ECHOSERV: Error calling listen()\n");
 vvv    }
   */
-  outputFile.open("../EOS_Monitor/many-eyes_vid.txt", ios::app);
+  outputFile.open("many-eyes_vid.txt", ios::app);
 }
 
 void doBroadcast(string data)
