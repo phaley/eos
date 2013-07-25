@@ -63,6 +63,7 @@ void    setupBroadcast(void);
 void    doBroadcast(string data);
 string  findBestRun(tAgent *swarmAgent, tAgent *predatorAgent);
 
+string videoFileName;
 ofstream outputFile;
 
 using namespace std;
@@ -192,6 +193,11 @@ int main(int argc, char *argv[])
             make_interval_video = true;
             ++i;
             make_video_frequency = atoi(argv[i]);
+
+	    ++i;
+	    stringstream vidfn;
+	    vidfn << argv[i];
+	    videoFileName = vidfn.str();
             
             if (make_video_frequency < 1)
             {
@@ -601,7 +607,7 @@ int main(int argc, char *argv[])
     
     FILE *LOD = fopen(LODFileName.c_str(), "w");
 
-    fprintf(LOD, "generation,prey_fitness,predator_fitness,num_alive_end,avg_bb_size,var_bb_size,avg_shortest_dist,swarm_density_count,prey_neurons_connected_prey_retina,prey_neurons_connected_predator_retina,predator_neurons_connected_prey_retina,mutual_info,num_attacks\n");
+    fprintf(LOD, "generation,prey_fitness,predator_fitness,num_alive_end,avg_bb_size,var_bb_size,avg_shortest_dist,swarm_density_count,prey_neurons_connected_prey_retina,prey_neurons_connected_predator_retina,predator_neurons_connected_prey_retina,num_attacks,num_prey_vigilant\n");
     
     cout << "analyzing ancestor list" << endl;
     
@@ -684,7 +690,8 @@ void setupBroadcast(void)
 		fprintf(stderr, "ECHOSERV: Error calling listen()\n");
 vvv    }
   */
-  outputFile.open("many-eyes_vid.txt", ios::app);
+  
+  outputFile.open(videoFileName.c_str(), ios::trunc);
 }
 
 void doBroadcast(string data)
