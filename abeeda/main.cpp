@@ -63,7 +63,7 @@ void    setupBroadcast(void);
 void    doBroadcast(string data);
 string  findBestRun(tAgent *swarmAgent, tAgent *predatorAgent);
 
-string videoFileName;
+string videoFileName = "many-eyes-default.txt";
 ofstream outputFile;
 
 using namespace std;
@@ -88,6 +88,8 @@ double  safetyDist                  = 30.0 * 30.0;
 double  predatorVisionAngle         = 180.0 / 2.0;
 int     killDelay                   = 10;
 double  confusionMultiplier         = 1.0;
+double  vigilanceFoodPenalty        = 1.0;
+double  foragingMovePenalty         = 0.0;
 
 int main(int argc, char *argv[])
 {
@@ -188,7 +190,7 @@ int main(int argc, char *argv[])
         }
         
         // -v [int]: make video of best brains at an interval
-        else if (strcmp(argv[i], "-v") == 0 && (i + 1) < argc)
+        else if (strcmp(argv[i], "-v") == 0 && (i + 2) < argc)
         {
             make_interval_video = true;
             ++i;
@@ -285,6 +287,22 @@ int main(int argc, char *argv[])
             
             confusionMultiplier = atof(argv[i]);
         }
+
+	// -vfp [float]: set prey penalty to food when vigilant (default: 1.0, range: [0,1])
+	else if (strcmp(argv[i], "-vfp") == 0 && (i + 1) < argc)
+	{
+	    ++i;
+
+	    vigilanceFoodPenalty = atof(argv[i]);
+	}
+
+        // -fmp [float]: set prey penalty to movement when foraging (default: 0.0, range: [0,1])
+	else if (strcmp(argv[i], "-fmp") == 0 && (i + 1) < argc)
+	{
+	    ++i;
+
+	    foragingMovePenalty = atof(argv[i]);
+	}
     }
     
     if (display_only || display_directory || make_interval_video || make_LOD_video)
@@ -461,7 +479,8 @@ int main(int argc, char *argv[])
         
 		for(int i = 0; i < populationSize; ++i)
         {
-            game->executeGame(swarmAgents[i], predatorAgents[i], NULL, false, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier);
+	  game->executeGame(swarmAgents[i], predatorAgents[i], NULL, false, safetyDist, predatorVisionAngle, killDelay,
+			    confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
             
             // store the swarm agent's corresponding predator agent
             swarmAgents[i]->predator = new tAgent;
@@ -503,7 +522,7 @@ int main(int argc, char *argv[])
             
             if (update % make_video_frequency == 0 || finalGeneration)
             {
-                string bestString = game->executeGame(bestSwarmAgent, bestPredatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier);
+	      string bestString = game->executeGame(bestSwarmAgent, bestPredatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
                 
                 if (finalGeneration)
                 {
@@ -620,7 +639,7 @@ int main(int argc, char *argv[])
         else
         {
             // collect quantitative stats
-            game->executeGame(*it, (*it)->predator, LOD, false, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier);
+            game->executeGame(*it, (*it)->predator, LOD, false, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
             
             // make video
             if (make_LOD_video)
@@ -651,7 +670,7 @@ string findBestRun(tAgent *swarmAgent, tAgent *predatorAgent)
     
     for (int rep = 0; rep < 100; ++rep)
     {
-        reportString = game->executeGame(swarmAgent, predatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier);
+      reportString = game->executeGame(swarmAgent, predatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
         
         if (swarmAgent->fitness > bestFitness)
         {

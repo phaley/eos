@@ -31,8 +31,8 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                3.00
-#define predatorStep            2.00
+#define preyStep                2.00
+#define predatorStep            2.50
 #define preyTurn                5
 #define attackDelay             0
 #define totalStepsInSimulation  2000
@@ -73,7 +73,7 @@ tGame::tGame()
 tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
-string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay, double confusionMultiplier)
+string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay, double confusionMultiplier, double vigilanceFoodPenalty, double foragingMovePenalty)
 {
     // LOD data variables
     double swarmFitness = 0.0;
@@ -96,9 +96,11 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     // swarm alive status
     bool preyDead[swarmSize];
     // swarm food status
-    int stomachs[swarmSize];
+    double stomachs[swarmSize];
     // swarm vigilance status
     bool vigilance[swarmSize];
+    // food reward while vigilant
+    double vigilanceFood = 1 - vigilanceFoodPenalty;
 
     for(int i = 0; i < swarmSize; ++i)
       {
@@ -610,6 +612,9 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 
 		if(vigilance[i])
 		  {
+		    
+		    stomachs[i] += vigilanceFood;
+
 		    // indicate the presence of other visible agents in agent i's retina
 		    for(int j = 0; j < swarmSize; ++j)
 		      {
@@ -699,6 +704,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
 		swarm[i]->updateStates();
 
+		double movMultiplier = 1.0;
+		if(!vigilance[i])
+		  {
+		    movMultiplier -= foragingMovePenalty;
+		  }
+
 		bool becomeVigilant = !!(swarm[i]->states[maxNodes - 4]);
 		// if the current agent wants to enter a vigilant state for the next update
 		if(becomeVigilant)
@@ -753,8 +764,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			preyA[i] -= 360.0;
 		      }
 		    
-		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
-		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep * movMultiplier;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep * movMultiplier;
                     
 		    break;
 			
@@ -766,15 +777,15 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			preyA[i] += 360.0;
 		      }
 		    
-		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
-		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep * movMultiplier;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep * movMultiplier;
                     
 		    break;
                     
 		    // move straight ahead
 		  case 3:
-		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep;
-		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep;
+		    preyX[i] += cosLookup[(int)preyA[i]] * preyStep * movMultiplier;
+		    preyY[i] += sinLookup[(int)preyA[i]] * preyStep * movMultiplier;
                     
 		    break;
                     
@@ -806,7 +817,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
       {
 	if(!preyDead[i])
 	  {
-	    swarmFitness += stomachs[i] * 10;
+	    swarmFitness += stomachs[i];
 	  }
 	delete swarm[i];
       }
