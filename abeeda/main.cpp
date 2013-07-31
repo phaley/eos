@@ -86,7 +86,7 @@ bool    make_dot_pred               = false;
 bool    make_dot_swarm              = false;
 double  safetyDist                  = 30.0 * 30.0;
 double  predatorVisionAngle         = 180.0 / 2.0;
-int     killDelay                   = 10;
+int     killDelay                   = 50;
 double  confusionMultiplier         = 1.0;
 double  vigilanceFoodPenalty        = 1.0;
 double  foragingMovePenalty         = 0.0;
@@ -440,47 +440,47 @@ int main(int argc, char *argv[])
     predatorAgent->loadAgent((char *)"startPredator.genome");
     
     // make mutated copies of the start genome to fill up the initial population
-	for(int i = 0; i < populationSize; ++i)
-    {
-		swarmAgents[i] = new tAgent;
-		swarmAgents[i]->inherit(swarmAgent, 0.01, 1);
-        
+    for(int i = 0; i < populationSize; ++i)
+      {
+	swarmAgents[i] = new tAgent;
+	swarmAgents[i]->inherit(swarmAgent, 0.01, 1);
+	
         predatorAgents[i] = new tAgent;
-		predatorAgents[i]->inherit(predatorAgent, 0.01, 1);
-    }
+	predatorAgents[i]->inherit(predatorAgent, 0.01, 1);
+      }
     
-	SANextGen.resize(populationSize);
+    SANextGen.resize(populationSize);
     PANextGen.resize(populationSize);
     
-	swarmAgent->nrPointingAtMe--;
+    swarmAgent->nrPointingAtMe--;
     predatorAgent->nrPointingAtMe--;
     
-	cout << "setup complete" << endl;
+    cout << "setup complete" << endl;
     cout << "starting evolution" << endl;
     
     // main loop
-	for (int update = 1; update <= totalGenerations; ++update)
-    {
+    for (int update = 1; update <= totalGenerations; ++update)
+      {
         // reset fitnesses
-		for(int i = 0; i < populationSize; ++i)
-        {
-			swarmAgents[i]->fitness = 0.0;
-			//swarmAgents[i]->fitnesses.clear();
+	for(int i = 0; i < populationSize; ++i)
+	  {
+	    swarmAgents[i]->fitness = 0.0;
+	    //swarmAgents[i]->fitnesses.clear();
             
             predatorAgents[i]->fitness = 0.0;
-			//predatorAgents[i]->fitnesses.clear();
-		}
+	    //predatorAgents[i]->fitnesses.clear();
+	  }
         
         // determine fitness of population
-		swarmMaxFitness = 0.0;
+	swarmMaxFitness = 0.0;
         predatorMaxFitness = 0.0;
         double swarmAvgFitness = 0.0;
         double predatorAvgFitness = 0.0;
         
-		for(int i = 0; i < populationSize; ++i)
-        {
-	  game->executeGame(swarmAgents[i], predatorAgents[i], NULL, false, safetyDist, predatorVisionAngle, killDelay,
-			    confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
+	for(int i = 0; i < populationSize; ++i)
+	  {
+	    game->executeGame(swarmAgents[i], predatorAgents[i], NULL, false, safetyDist, predatorVisionAngle, killDelay,
+			      confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
             
             // store the swarm agent's corresponding predator agent
             swarmAgents[i]->predator = new tAgent;

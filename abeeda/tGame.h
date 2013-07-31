@@ -58,13 +58,13 @@ public:
     double calcDistanceSquared(double fromX, double fromY, double toX, double toY);
     double calcAngle(double fromX, double fromY, double fromAngle, double toX, double toY);
     void calcSwarmCenter(double preyX[], double preyY[], bool preyDead[], double& preyCenterX, double& preyCenterY);
-    void recalcPredDistTable(double preyX[], double preyY[], bool preyDead[],
+    void recalcPredDistTable(bool foragePhase, double preyX[], double preyY[], bool preyDead[],
                              double predX[], double predY[],
                              double predDists[predCount][swarmSize]);
-    void recalcPredAndPreyDistTable(double preyX[], double preyY[], bool preyDead[],
+    void recalcPredAndPreyDistTable(bool foragePhase, double preyX[], double preyY[], bool preyDead[],
                                     double predX[], double predY[],
                                     double predDists[predCount][swarmSize], double preyDists[swarmSize][swarmSize]);
-    void recalcPredAndPreyAndFoodDistTable(double preyX[], double preyY[], bool preyDead[],
+    void recalcPredAndPreyAndFoodDistTable(bool foragePhase, double preyX[], double preyY[], bool preyDead[],
 					   double predX[], double predY[], /*double foodX[], double foodY[],*/
 					   double predDists[predCount][swarmSize], double preyDists[swarmSize][swarmSize]/*, double foodDists[swarmSize][foodCount]*/);
     void applyBoundary(double& positionVal);
