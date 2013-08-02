@@ -31,8 +31,8 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                3.00
-#define predatorStep            1.50
+#define preyStep                1.50
+#define predatorStep            2.50
 #define preyTurn                5
 #define attackDelay             50
 #define totalStepsInSimulation  2000
@@ -76,7 +76,7 @@ tGame::~tGame() { }
 string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay, double confusionMultiplier, double vigilanceFoodPenalty, double foragingMovePenalty)
 {
     // state of simulation (whether prey should be feeding or fleeing)
-    bool foragePhase;
+    bool foragePhase = true;
     // number of updates remaining until the phase switches from foraging to fleeing
     int phaseDelay = killDelay;
 
@@ -189,8 +189,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
             ++numTries;
             goodPos = true;
             
-            preyX[i] = 0.9 * ((double)(randDouble * gridX * 2.0) - gridX);
-            preyY[i] = 0.9 * ((double)(randDouble * gridY * 2.0) - gridY);
+            preyX[i] = 0.4 * ((double)(randDouble * gridX * 2.0) - gridX);
+            preyY[i] = 0.4 * ((double)(randDouble * gridY * 2.0) - gridY);
             
             for (int j = 0; j < i; ++j)
             {
@@ -490,8 +490,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			  {
 			    goodPos = true;
 			    
-			    preyX[i] = 0.9 * ((double)(randDouble * gridX * 2.0) - gridX);
-			    preyY[i] = 0.9 * ((double)(randDouble * gridY * 2.0) - gridY);
+			    preyX[i] = 0.4 * ((double)(randDouble * gridX * 2.0) - gridX);
+			    preyY[i] = 0.4 * ((double)(randDouble * gridY * 2.0) - gridY);
 			    
 			    for (int j = 0; j < i; ++j)
 			      {
@@ -604,7 +604,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			}
 		    }
 		  
-		  if (preyX[i] > (-0.5 * boundaryDist) && preyX[i] < (0.5 * boundaryDist) && preyY[i] > (-0.5 * boundaryDist) && preyY[i] < (0.5 * boundaryDist))
+		  if (preyX[i] > (-0.4 * boundaryDist) && preyX[i] < (0.4 * boundaryDist) && preyY[i] > (-0.4 * boundaryDist) && preyY[i] < (0.4 * boundaryDist))
 		    {
 		      if(vigilance[i])
 			{
@@ -808,6 +808,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 applyBoundary(preyX[i]);
                 applyBoundary(preyY[i]);
 	      }
+
+	    if(!preyDead[i])
+	      {
+		swarmFitness += stomachs[i];
+		stomachs[i] = 0;
+	      }
 	  }
       
         // recalculate both the predator and prey distances lookup tables since the entire swarm has moved
@@ -826,10 +832,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     
     for(int i = 0; i < swarmSize; i++)
       {
-	if(!preyDead[i])
-	  {
-	    swarmFitness += stomachs[i];
-	  }
 	delete swarm[i];
       }
 
