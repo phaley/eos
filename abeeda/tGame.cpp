@@ -622,11 +622,18 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      swarm[i]->states[j] = 0;
 		    }
 		  
+		  /*
 		  // indicate that a signal was sent to the agent in the previous update
 		  if(receivedBroadcast[i])
 		    {
 		      swarm[i]->states[preySensors * 2] = 1;
 		      receivedBroadcast[i] = false;
+		    }
+		  */
+
+		  if(!foragePhase)
+		    {
+		      swarm[i]->states[preySensors * 2] = 1;
 		    }
 		  
 		  if(vigilance[i])
@@ -732,6 +739,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		    vigilance[i] = false;
 		  }
 
+		/*
 		bool broadcast = !!(swarm[i]->states[maxNodes - 3]);
 		// if the current agent wants to broadcast
 		if(broadcast)
@@ -750,6 +758,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			      }
 			  }
 		      }
+
 		    bool predPresent = false;
 		    for(int j = 0; j < predCount; ++j)
 		      {
@@ -768,12 +777,13 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      {
 			swarmFitness -= 250;
 		      }
-		  }
+		   }
 		else
 		  {
 		    //register that the individual chose not to broadcast
 		    sentBroadcast[i] = false;
 		  }
+	        */
 		
                 //                                  node 31                                                         node 30
                 int action = ((swarm[i]->states[maxNodes - 1] & 1) << 1) + (swarm[i]->states[maxNodes - 2] & 1);
