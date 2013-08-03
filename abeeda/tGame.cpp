@@ -750,6 +750,24 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			      }
 			  }
 		      }
+		    bool predPresent = false;
+		    for(int j = 0; j < predCount; ++j)
+		      {
+			double d = predDists[j][i];
+			if(d < preyVisionRange)
+			  {
+			    predPresent = true;
+			    break;
+			  }
+		      }
+		    if(predPresent)
+		      {
+			swarmFitness += 500;
+		      }
+		    else
+		      {
+			swarmFitness -= 250;
+		      }
 		  }
 		else
 		  {
@@ -808,12 +826,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
                 applyBoundary(preyX[i]);
                 applyBoundary(preyY[i]);
 	      }
-
-	    if(!preyDead[i])
-	      {
-		swarmFitness += stomachs[i];
-		stomachs[i] = 0;
-	      }
 	  }
       
         // recalculate both the predator and prey distances lookup tables since the entire swarm has moved
@@ -832,6 +844,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     
     for(int i = 0; i < swarmSize; i++)
       {
+	if(!preyDead[i])
+	  {
+	    swarmFitness += stomachs[i];
+	  }
 	delete swarm[i];
       }
 
