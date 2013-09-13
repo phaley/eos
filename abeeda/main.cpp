@@ -518,9 +518,9 @@ int main(int argc, char *argv[])
         // display video of simulation
         if (make_interval_video)
         {
-            bool finalGeneration = (update == totalGenerations);
+	  bool finalGeneration = (update == ((totalGenerations / make_video_frequency) * make_video_frequency));
             
-            if (update % make_video_frequency == 0 || finalGeneration)
+            if (update % make_video_frequency == 0)
             {
 	      string bestString = game->executeGame(bestSwarmAgent, bestPredatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
                 

@@ -31,9 +31,9 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                1.50
+#define preyStep                2.50
 #define predatorStep            2.50
-#define preyTurn                5
+#define preyTurn                8
 #define attackDelay             50
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
@@ -79,6 +79,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     bool foragePhase = true;
     // number of updates remaining until the phase switches from foraging to fleeing
     int phaseDelay = killDelay;
+    // number of updates in fleeing mode the prey survives for
+    int survivalTime = 0;
 
     // LOD data variables
     double swarmFitness = 0.0;
@@ -158,6 +160,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     // define the predator's maximum turning radius based on speed and kill distance
     double predatorTurn = floor(2 * asin(predatorStep / (2 * sqrt(killDist))) * 180 / cPI);
     predatorTurn += (predatorTurn < 0 ? 360 : 0);
+    predatorTurn = 8;
 
     // tables of agents to receive broadcast signals
     bool receivedBroadcast[swarmSize];
@@ -232,10 +235,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     
     // initialize predator and prey lookup tables
     recalcPredAndPreyAndFoodDistTable(foragePhase, preyX, preyY, preyDead, predX, predY, /*foodX, foodY, */ predDists, preyDists/*, foodDists*/);
-
-    //printf("predDist Test: %f\n", predDists[0]);
-    //printf("preyDist Test: %f\n", preyDists[0][1]);
-    //printf("foodDist Test: %f\n", foodDists[0][0]);
 
     /*       BEGINNING OF SIMULATION LOOP       */
     
@@ -479,7 +478,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
 		for(int i = 0; i < swarmSize; ++i)
 		  {
-		    if(!preyDead[i])
+		    if(true /*!preyDead[i]*/)
 		      {
 			receivedBroadcast[i] = false;
 			sentBroadcast[i] = false;
@@ -501,24 +500,11 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 				    break;
 				  }
 			      }
-			    /*
-			      if(goodPos)
-			      {
-			      for(int j = 0; j < foodCount; j++)
-			      {
-			      if(calcDistanceSquared(preyX[i], preyY[i], foodX[j], foodY[j]) < safetyDist)
-			      {
-			      goodPos = false;
-			      break;
-			      }
-			      }
-			      }
-			    */
-			    
 			  } while (!goodPos);
 			
 			preyA[i] = (int)(randDouble * 359.0);
 			
+			preyDead[i] = false;
 			preyFled[i] = false;
 		      }
 		  }
@@ -528,6 +514,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
         /*       UPDATE PREDATOR       */
 	if(!foragePhase)
 	  {
+	    survivalTime++;
+
 	    for(int i = 0; i < predCount; i++)
 	      {
 		// look for nearest prey
@@ -547,31 +535,30 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		// if the prey is close enough to kill
 		if(targetDist < killDist)
 		  {
-		    if(numAlive > 2)
+		    predatorFitness++;
+		    if(swarmFitness < step)
 		      {
-			predX[i] = preyX[target];
-			predY[i] = preyY[target];
-			preyDead[target] = true;
-			predatorHasEaten[i] = true;
-			--numAlive;
+			swarmFitness = survivalTime;
 		      }
+		    predX[i] = preyX[target];
+		    predY[i] = preyY[target];
+		    preyDead[target] = true;
+		    survivalTime = 0;
 		  }
 		// if prey is outside of kill range
 		else
 		  {
 		    // move toward nearest prey
 		    double angleDiff = calcAngle(predX[i], predY[i], predA[i], preyX[target], preyY[target]);
-		    /*
-		      if(abs(angleDiff) < predatorTurn)
+		    if(abs(angleDiff) < predatorTurn)
 		      {
-		      predA[i] += angleDiff;
+			predA[i] += angleDiff;
 		      }
-		      else
+		    else
 		      {
-		      int sign = (angleDiff < 0 ? 1 : -1);
-		      predA[i] += sign * predatorTurn;
+			int sign = (angleDiff < 0 ? 1 : -1);
+			predA[i] += sign * predatorTurn;
 		      }	
-		    */
 		    predA[i] -= angleDiff;
 		    while(predA[i] < 0) {predA[i] += 360;}
 		    while(predA[i] >= 360) {predA[i] -= 360;}
@@ -596,6 +583,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	    {
 	      if(!preyFled[i])
 		{
+		  /*
 		  if(!foragePhase)
 		    {
 		      if(preyX[i] < (-0.8 * boundaryDist) || preyX[i] > (0.8 * boundaryDist) || preyY[i] < (-0.8 * boundaryDist) || preyY[i] > (0.8 * boundaryDist))
@@ -603,7 +591,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			  preyFled[i] = true;
 			}
 		    }
-		  
+		  */
 		  if (preyX[i] > (-0.4 * boundaryDist) && preyX[i] < (0.4 * boundaryDist) && preyY[i] > (-0.4 * boundaryDist) && preyY[i] < (0.4 * boundaryDist))
 		    {
 		      if(vigilance[i])
@@ -622,18 +610,11 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      swarm[i]->states[j] = 0;
 		    }
 		  
-		  /*
 		  // indicate that a signal was sent to the agent in the previous update
 		  if(receivedBroadcast[i])
 		    {
 		      swarm[i]->states[preySensors * 2] = 1;
 		      receivedBroadcast[i] = false;
-		    }
-		  */
-
-		  if(!foragePhase)
-		    {
-		      swarm[i]->states[preySensors * 2] = 1;
 		    }
 		  
 		  if(vigilance[i])
@@ -736,10 +717,9 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		  }
 		else
 		  {
-		    vigilance[i] = false;
+		    vigilance[i] = true;
 		  }
 
-		/*
 		bool broadcast = !!(swarm[i]->states[maxNodes - 3]);
 		// if the current agent wants to broadcast
 		if(broadcast)
@@ -758,32 +738,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			      }
 			  }
 		      }
-
-		    bool predPresent = false;
-		    for(int j = 0; j < predCount; ++j)
-		      {
-			double d = predDists[j][i];
-			if(d < preyVisionRange)
-			  {
-			    predPresent = true;
-			    break;
-			  }
-		      }
-		    if(predPresent)
-		      {
-			swarmFitness += 500;
-		      }
-		    else
-		      {
-			swarmFitness -= 250;
-		      }
-		   }
+		  }
 		else
 		  {
 		    //register that the individual chose not to broadcast
 		    sentBroadcast[i] = false;
 		  }
-	        */
 		
                 //                                  node 31                                                         node 30
                 int action = ((swarm[i]->states[maxNodes - 1] & 1) << 1) + (swarm[i]->states[maxNodes - 2] & 1);
@@ -851,7 +811,8 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
         
     }
     /*       END OF SIMULATION LOOP       */
-    
+
+    /*
     for(int i = 0; i < swarmSize; i++)
       {
 	if(!preyDead[i])
@@ -860,9 +821,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	  }
 	delete swarm[i];
       }
-
-    predatorFitness = swarmSize - numAlive;
     
+    predatorFitness = swarmSize - numAlive;
+    */
+
     // compute overall fitness
     swarmAgent->fitness = swarmFitness;
     predatorAgent->fitness = predatorFitness;
