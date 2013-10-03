@@ -31,8 +31,8 @@
 #define predatorVisionRange     200.0 * 200.0
 #define preySensors             24
 #define predatorSensors         12
-#define preyStep                2.50
-#define predatorStep            2.50
+#define preyStep                1.75
+#define predatorStep            2.00
 #define preyTurn                8
 #define attackDelay             50
 #define totalStepsInSimulation  2000
@@ -42,6 +42,8 @@
 #define forageDist              2.0 * 2.0
 #define broadcastDist           100.0 * 100.0
 #define boundaryDist            250.0
+#define artificialReward        25.0
+#define artificialPenalty       25.0
 
 // precalculated lookup tables for the game
 double cosLookup[360];
@@ -73,14 +75,13 @@ tGame::tGame()
 tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
-string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay, double confusionMultiplier, double vigilanceFoodPenalty, double foragingMovePenalty)
+string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay,
+			  double confusionMultiplier, double vigilanceFoodPenalty, double foragingMovePenalty, bool artificialBroadcast, bool artificialResponse)
 {
     // state of simulation (whether prey should be feeding or fleeing)
     bool foragePhase = true;
     // number of updates remaining until the phase switches from foraging to fleeing
     int phaseDelay = killDelay;
-    // number of updates in fleeing mode the prey survives for
-    int survivalTime = 0;
 
     // LOD data variables
     double swarmFitness = 0.0;
@@ -114,7 +115,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     for(int i = 0; i < swarmSize; ++i)
       {
 	stomachs[i] = 0;
-	vigilance[i] = true;
+	vigilance[i] = false;
       }
     
     // lookup table for distances between predator and swarm agents
@@ -168,10 +169,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
     // string containing the information to create a video of the simulation
     string reportString = "";
-    
-    // set up brain for clone swarm
-    //swarmAgent->setupMegaPhenotype(swarmSize);
-    //swarmAgent->fitness = 0.0;
     
     for(int i = 0; i < swarmSize; ++i)
       {
@@ -478,7 +475,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 
 		for(int i = 0; i < swarmSize; ++i)
 		  {
-		    if(true /*!preyDead[i]*/)
+		    if(!preyDead[i])
 		      {
 			receivedBroadcast[i] = false;
 			sentBroadcast[i] = false;
@@ -514,8 +511,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
         /*       UPDATE PREDATOR       */
 	if(!foragePhase)
 	  {
-	    survivalTime++;
-
 	    for(int i = 0; i < predCount; i++)
 	      {
 		// look for nearest prey
@@ -533,17 +528,12 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      }
 		  }
 		// if the prey is close enough to kill
-		if(targetDist < killDist)
+		if(targetDist < killDist & numAlive > 2)
 		  {
-		    predatorFitness++;
-		    if(swarmFitness < step)
-		      {
-			swarmFitness = survivalTime;
-		      }
 		    predX[i] = preyX[target];
 		    predY[i] = preyY[target];
 		    preyDead[target] = true;
-		    survivalTime = 0;
+		    numAlive--;
 		  }
 		// if prey is outside of kill range
 		else
@@ -583,7 +573,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	    {
 	      if(!preyFled[i])
 		{
-		  /*
 		  if(!foragePhase)
 		    {
 		      if(preyX[i] < (-0.8 * boundaryDist) || preyX[i] > (0.8 * boundaryDist) || preyY[i] < (-0.8 * boundaryDist) || preyY[i] > (0.8 * boundaryDist))
@@ -591,7 +580,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 			  preyFled[i] = true;
 			}
 		    }
-		  */
 		  if (preyX[i] > (-0.4 * boundaryDist) && preyX[i] < (0.4 * boundaryDist) && preyY[i] > (-0.4 * boundaryDist) && preyY[i] < (0.4 * boundaryDist))
 		    {
 		      if(vigilance[i])
@@ -609,14 +597,31 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		    {
 		      swarm[i]->states[j] = 0;
 		    }
-		  
-		  // indicate that a signal was sent to the agent in the previous update
-		  if(receivedBroadcast[i])
+
+		  // if enabled, provide an artificial broadcast if the prey can see a predator
+		  if(artificialBroadcast)
 		    {
-		      swarm[i]->states[preySensors * 2] = 1;
-		      receivedBroadcast[i] = false;
+		      for(int j = 0; j < predCount; ++j)
+			{
+			  if(predDists[j][i] < preyVisionRange)
+			    {
+			      swarm[i]->states[preySensors * 2] = 1;
+			      break;
+			    }
+			}
 		    }
-		  
+		  // if artificial broadcast not enabled, behave normally
+		  else
+		    {
+		      
+		      // indicate that a signal was sent to the agent in the previous update
+		      if(receivedBroadcast[i])
+			{
+			  swarm[i]->states[preySensors * 2] = 1;
+			  receivedBroadcast[i] = false;
+			}
+		    }
+
 		  if(vigilance[i])
 		    {
 		      // indicate the presence of other visible agents in agent i's retina
@@ -692,9 +697,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	    }
         }
         
-        // activate the swarm agents' brains
-	//swarmAgent->updateStates();
-        
         // activate each swarm agent's brain, determine its action for this update, and update its position and angle
         for(int i = 0; i < swarmSize; ++i)
 	  {
@@ -717,16 +719,36 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		  }
 		else
 		  {
-		    vigilance[i] = true;
+		    vigilance[i] = false;
 		  }
 
 		bool broadcast = !!(swarm[i]->states[maxNodes - 3]);
 		// if the current agent wants to broadcast
 		if(broadcast)
 		  {
-		    //register that the individual chose to broadcast
 		    sentBroadcast[i] = true;
-
+		    
+		    if(artificialResponse)
+		      {
+			bool reward = false;
+			for(int j = 0; j < predCount; ++j)
+			  {
+			    if(predDists[j][i] < preyVisionRange)
+			      {
+				reward = true;
+				break;
+			      }
+			  }
+			if(reward)
+			    stomachs[i] += artificialReward;
+			else
+			  {
+			    stomachs[i] -= artificialPenalty;
+			    if(stomachs[i] < 0)
+			      stomachs[i] = 0;
+			  }
+		      }
+				
 		    // find the alive prey within range
 		    for(int j = 0; j < swarmSize; ++j)
 		      {
@@ -741,11 +763,10 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		  }
 		else
 		  {
-		    //register that the individual chose not to broadcast
 		    sentBroadcast[i] = false;
 		  }
 		
-                //                                  node 31                                                         node 30
+                //                              node 31                                      node 30
                 int action = ((swarm[i]->states[maxNodes - 1] & 1) << 1) + (swarm[i]->states[maxNodes - 2] & 1);
 		
                 switch(action)
@@ -812,7 +833,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     }
     /*       END OF SIMULATION LOOP       */
 
-    /*
     for(int i = 0; i < swarmSize; i++)
       {
 	if(!preyDead[i])
@@ -823,7 +843,6 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
       }
     
     predatorFitness = swarmSize - numAlive;
-    */
 
     // compute overall fitness
     swarmAgent->fitness = swarmFitness;

@@ -70,7 +70,7 @@ using namespace std;
 
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
-int     populationSize              = 100;
+int     populationSize              = 300;
 int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
 
@@ -90,16 +90,17 @@ int     killDelay                   = 200;
 double  confusionMultiplier         = 1.0;
 double  vigilanceFoodPenalty        = 1.0;
 double  foragingMovePenalty         = 0.0;
+bool    artificialBroadcast         = false;
+bool    artificialResponse          = false;
 
 int main(int argc, char *argv[])
 {
-	vector<tAgent*> swarmAgents, SANextGen, predatorAgents, PANextGen;
-	tAgent *swarmAgent = NULL, *predatorAgent = NULL, *bestSwarmAgent = NULL, *bestPredatorAgent = NULL;
-	double swarmMaxFitness = 0.0, predatorMaxFitness =
- 0.0;
-    string LODFileName = "", swarmGenomeFileName = "", predatorGenomeFileName = "", inputGenomeFileName = "";
-    string swarmDotFileName = "", predatorDotFileName = "", logicTableFileName = "";
-    int displayDirectoryArgvIndex = 0;
+  vector<tAgent*> swarmAgents, SANextGen, predatorAgents, PANextGen;
+  tAgent *swarmAgent = NULL, *predatorAgent = NULL, *bestSwarmAgent = NULL, *bestPredatorAgent = NULL;
+  double swarmMaxFitness = 0.0, predatorMaxFitness = 0.0;
+  string LODFileName = "", swarmGenomeFileName = "", predatorGenomeFileName = "", inputGenomeFileName = "";
+  string swarmDotFileName = "", predatorDotFileName = "", logicTableFileName = "";
+  int displayDirectoryArgvIndex = 0;
     
     // initial object setup
     swarmAgents.resize(populationSize);
@@ -303,6 +304,18 @@ int main(int argc, char *argv[])
 
 	    foragingMovePenalty = atof(argv[i]);
 	}
+
+	// -ab: send an artificial broadcast signal to the prey whenever the predator is present
+	else if (strcmp(argv[i], "-ab") == 0)
+	  {
+	    artificialBroadcast = true;
+	  }
+
+	// -ar: provide an artificial reward to a prey who broadcasts successfully
+	else if (strcmp(argv[i], "-ar") == 0)
+	  {
+	    artificialResponse = true;
+	  }
     }
     
     if (display_only || display_directory || make_interval_video || make_LOD_video)
@@ -480,7 +493,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < populationSize; ++i)
 	  {
 	    game->executeGame(swarmAgents[i], predatorAgents[i], NULL, false, safetyDist, predatorVisionAngle, killDelay,
-			      confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
+			      confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty, artificialBroadcast, artificialResponse);
             
             // store the swarm agent's corresponding predator agent
             swarmAgents[i]->predator = new tAgent;
@@ -522,7 +535,8 @@ int main(int argc, char *argv[])
             
             if (update % make_video_frequency == 0)
             {
-	      string bestString = game->executeGame(bestSwarmAgent, bestPredatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
+	      string bestString = game->executeGame(bestSwarmAgent, bestPredatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay,
+						    confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty, artificialBroadcast, artificialResponse);
                 
                 if (finalGeneration)
                 {
@@ -639,7 +653,8 @@ int main(int argc, char *argv[])
         else
         {
             // collect quantitative stats
-            game->executeGame(*it, (*it)->predator, LOD, false, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
+	  game->executeGame(*it, (*it)->predator, LOD, false, safetyDist, predatorVisionAngle, killDelay,
+			    confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty, artificialBroadcast, artificialResponse);
             
             // make video
             if (make_LOD_video)
@@ -670,7 +685,8 @@ string findBestRun(tAgent *swarmAgent, tAgent *predatorAgent)
     
     for (int rep = 0; rep < 100; ++rep)
     {
-      reportString = game->executeGame(swarmAgent, predatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay, confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty);
+      reportString = game->executeGame(swarmAgent, predatorAgent, NULL, true, safetyDist, predatorVisionAngle, killDelay,
+				       confusionMultiplier, vigilanceFoodPenalty, foragingMovePenalty, artificialBroadcast, artificialResponse);
         
         if (swarmAgent->fitness > bestFitness)
         {
