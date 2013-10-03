@@ -32,9 +32,9 @@
 #define preySensors             24
 #define predatorSensors         12
 #define preyStep                2.00
-#define predatorStep            2.50
+#define predatorStep            2.25
 #define preyTurn                5
-#define attackDelay             0
+#define attackDelay             40
 #define totalStepsInSimulation  2000
 #define gridX                   256.0
 #define gridY                   256.0
@@ -80,7 +80,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
     double predatorFitness = 0.0;
     // counter of how many swarm agents are still alive
     int numAlive = swarmSize;
-    // number of attacks the predator has made
+    // count of how many attacks the predator has made
     int numAttacks = 0;
     
     vector<double> bbSizes;
@@ -449,12 +449,22 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 	    // if preadtor is not between attacks
 	    if(predatorOnGrid[i])
 	      {
+		// if the predator has waited long enough between attacks
+		if(predatorDelay[i] == 0)
+		  {
+		    predatorHasEaten[i] = false;
+		  }
+		else
+		  {
+		    predatorDelay[i]--;
+		  }
 		// if the predator has returned home after eating
 		if(predatorHasEaten[i] && calcDistanceSquared(startX[i], startY[i], predX[i], predY[i]) < killDist)
 		  {
-		    predatorOnGrid[i] = false;
-		    predatorDelay[i] = attackDelay;
-	      }
+		    predatorHasEaten[i] = false;
+		    // predatorOnGrid[i] = false;
+		    // predatorDelay[i] = attackDelay;
+		  }
 		// if the predator is still moving
 		else
 		  {
@@ -484,6 +494,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 				predY[i] = preyY[target];
 				preyDead[target] = true;
 				predatorHasEaten[i] = true;
+				predatorDelay[i] = attackDelay;
 				--numAlive;
 			      }
 			  }
@@ -534,6 +545,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		      }
 		  }
 	      }
+	    /*
 	    // if the predator is between attacks
 	    else
 	      {
@@ -578,6 +590,7 @@ string tGame::executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_
 		    --predatorDelay[i];
 		  }
 	      }
+	    */
 	    
 	    // keep position within simulation boundary
 	    if(predatorOnGrid[i])

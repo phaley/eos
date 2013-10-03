@@ -70,7 +70,7 @@ using namespace std;
 
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
-int     populationSize              = 100;
+int     populationSize              = 300;
 int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
 
