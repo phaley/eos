@@ -1,5 +1,3 @@
-//TESTING GITHUB
-
 /*
  * globalConst.h
  *
@@ -26,7 +24,7 @@
 
 #define     cPI             3.14159265
 #define     randDouble      ((double)rand() / (double)RAND_MAX)
-#define     maxNodes        64
+#define     maxNodes        32
 #define     swarmSize       50
 #define     predCount       2
 #define     foodCount       20

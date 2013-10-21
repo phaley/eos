@@ -52,22 +52,10 @@ class tGame{
 public:
     tExperiment theExperiment;
     void loadExperiment(char *filename);
-    string executeGame(tAgent* swarmAgent, tAgent* predatorAgent, FILE *data_file, bool report, double safetyDist, double predatorVisionAngle, int killDelay, double confusionMultiplier, double vigilanceFoodPenalty, double foragingMovePenalty);
+    string executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty);
     tGame();
     ~tGame();
-    double calcDistanceSquared(double fromX, double fromY, double toX, double toY);
-    double calcAngle(double fromX, double fromY, double fromAngle, double toX, double toY);
-    void calcSwarmCenter(double preyX[], double preyY[], bool preyDead[], double& preyCenterX, double& preyCenterY);
-    void recalcPredDistTable(double preyX[], double preyY[], bool preyDead[],
-                             double predX[], double predY[],
-                             double predDists[predCount][swarmSize]);
-    void recalcPredAndPreyDistTable(double preyX[], double preyY[], bool preyDead[],
-                                    double predX[], double predY[],
-                                    double predDists[predCount][swarmSize], double preyDists[swarmSize][swarmSize]);
-    void recalcPredAndPreyAndFoodDistTable(double preyX[], double preyY[], bool preyDead[],
-					   double predX[], double predY[], /*double foodX[], double foodY[],*/
-					   double predDists[predCount][swarmSize], double preyDists[swarmSize][swarmSize]/*, double foodDists[swarmSize][foodCount]*/);
-    void applyBoundary(double& positionVal);
+    int newPredDelay(void);
     double sum(vector<double> values);
     double average(vector<double> values);
     double variance(vector<double> values);
@@ -80,8 +68,5 @@ public:
     double computeR(vector<vector<int> > table,int howFarBack);
     double computeOldR(vector<vector<int> > table);
     double entropy(vector<int> list);
-    int neuronsConnectedToPreyRetina(tAgent *agent);
-    int neuronsConnectedToPredatorRetina(tAgent* agent);
-
 };
 #endif
