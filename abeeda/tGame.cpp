@@ -26,11 +26,12 @@
 #include <stdio.h>
 
 // simulation-specific constants
-#define unawareKillProb         0.95
-#define groupAwareKillProb      0.30
-#define indvAwareKillProb       0.20
+#define unawareKillProb         0.90
+#define groupAwareKillProb      0.50
+#define indvAwareKillProb       0.10
 
-#define attackDelayMean         20
+#define attackDuration          5
+#define attackDelayMean         50
 #define attackDelayRange        10/2
 #define totalStepsInSimulation  2000
 
@@ -55,13 +56,16 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
     vector<double> numPreyVigilant;
 
     int predatorDelay = newPredDelay();
+    int attackCounter = attackDuration;
 
     // set of all prey brains
     tAgent* swarm[swarmSize];
-    // swarm alive status
+    // whether a given agent is alive
     bool preyDead[swarmSize];
-    // swarm vigilance status
+    // whether a given agent is vigilant
     bool vigilance[swarmSize];
+    // whether a given agent is aware of the predator
+    bool awareness[swarmSize];
     // food reward while vigilant
     double vigilanceFood = 1 - vigilanceFoodPenalty;
 
@@ -81,6 +85,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 	swarm[i]->fitness = 0.0;
 	preyDead[i] = false;
 	vigilance[i] = false;
+	awareness[i] = false;
 	receivedBroadcast[i] = false;
 	sentBroadcast[i] = false;
       }
@@ -106,34 +111,17 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 	
 	if(predatorDelay == 0)
 	  {
-	    if(numAlive > 0)
+	    if(attackCounter == 0)
 	      {
-		int target;
-		do {
-		  target = randDouble * swarmSize;
-		} while(preyDead[target]);
-		if(vigilance[target])
+		if(numAlive > 0)
 		  {
-		    if(indvAwareKillProb > randDouble)
+		    int target;
+		    do {
+		      target = randDouble * swarmSize;
+		    } while(preyDead[target]);
+		    if(awareness[target])
 		      {
-			preyDead[target] = true;
-			numAlive--;
-		      }
-		  }
-		else
-		  {
-		    bool groupAware = false;
-		    for(int i = 0; i < swarmSize; ++i)
-		      {
-			if(vigilance[i])
-			  {
-			    groupAware = true;
-			    break;
-			  }
-		      }
-		    if(groupAware)
-		      {
-			if(groupAwareKillProb > randDouble)
+			if(indvAwareKillProb > randDouble)
 			  {
 			    preyDead[target] = true;
 			    numAlive--;
@@ -141,17 +129,45 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 		      }
 		    else
 		      {
-			if(unawareKillProb > randDouble)
+			bool groupAware = false;
+			for(int i = 0; i < swarmSize; ++i)
 			  {
-			    preyDead[target] = true;
-			    numAlive--;
+			    if(awareness[i])
+			      {
+				groupAware = true;
+				break;
+			      }
+			  }
+			if(groupAware)
+			  {
+			    if(groupAwareKillProb > randDouble)
+			      {
+				preyDead[target] = true;
+				numAlive--;
+			      }
+			  }
+			else
+			  {
+			    if(unawareKillProb > randDouble)
+			      {
+				preyDead[target] = true;
+				numAlive--;
+			      }
 			  }
 		      }
 		  }
+		predatorDelay = newPredDelay();
+		attackCounter = attackDuration;
+		for(int i = 0; i < swarmSize; ++i)
+		  {
+		    awareness[i] = false;
+		  }
 	      }
-	    predatorDelay = newPredDelay();
+	    else
+	      {
+		attackCounter--;
+	      }
 	  }
-
 	else
 	  {
 	    predatorDelay--;
@@ -170,6 +186,10 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 		  }
 		else
 		  {
+		    if(attackCounter == 0)
+		      {
+			awareness[i] = true;
+		      }
 		    swarm[i]-> fitness += vigilanceFood;
 		  }
 		// activate each swarm agent's brain, determine its action for this update, and update its position and angle
