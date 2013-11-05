@@ -29,9 +29,12 @@
 #define unawareKillProb         0.90
 #define groupAwareKillProb      0.50
 #define indvAwareKillProb       0.10
+#define groupAwareThreshold     5
+#define groupAwareProbStep      (int) ((groupAwareKillProb - indvAwareKillProb) / (swarmSize / groupAwareThreshold))
+#define incrementProbs          true
 
 #define attackDuration          5
-#define attackDelayMean         50
+#define attackDelayMean         5
 #define attackDelayRange        10/2
 #define totalStepsInSimulation  2000
 
@@ -129,21 +132,33 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 		      }
 		    else
 		      {
+			int awareCount = 0;
 			bool groupAware = false;
 			for(int i = 0; i < swarmSize; ++i)
 			  {
 			    if(awareness[i])
 			      {
+				awareCount++;
 				groupAware = true;
-				break;
 			      }
 			  }
 			if(groupAware)
 			  {
-			    if(groupAwareKillProb > randDouble)
+			    if(incrementProbs)
 			      {
-				preyDead[target] = true;
-				numAlive--;
+				if(groupAwareKillProb - groupAwareProbStep * awareCount > randDouble)
+				  {
+				    preyDead[target] = true;
+				    numAlive--;
+				  }
+			      }
+			    else
+			      {
+				if(groupAwareKillProb > randDouble)
+				  {
+				    preyDead[target] = true;
+				    numAlive--;
+				  }
 			      }
 			  }
 			else

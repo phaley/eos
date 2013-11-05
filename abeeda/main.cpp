@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
   string LODFileName = "", swarmGenomeFileName = "", inputGenomeFileName = "";
   string swarmDotFileName = "", logicTableFileName = "";
   int displayDirectoryArgvIndex = 0;
+  deque<double> genAvgFitness,genAvgVigilance;
   
   // initial object setup
   swarmAgents.resize(populationSize);
@@ -315,12 +316,24 @@ int main(int argc, char *argv[])
         // determine fitness of population
 	swarmMaxFitness = 0.0;
         double swarmAvgFitness = 0.0;
+	double swarmAvgVigilance = 0.0;
         
 	game->executeGame(swarmAgents, NULL, false, confusionMultiplier, vigilanceFoodPenalty);
        
 	for(int i = 0; i < populationSize; ++i)
 	  {
 	    swarmAvgFitness += swarmAgents[i]->fitness;
+	    
+	    swarmAgents[i]->setupPhenotype();
+	    double agentAvgVigilance = 0;
+	    for(int j = 0; j < 1000; ++j)
+	      {
+		swarmAgents[i]->updateStates();
+		if((swarmAgents[i]->states[0] & 1) == 1)
+		  agentAvgVigilance++;
+	      }
+	    agentAvgVigilance /= 1000;
+	    swarmAvgVigilance += agentAvgVigilance;
             
             if(swarmAgents[i]->fitness > swarmMaxFitness)
             {
@@ -330,6 +343,9 @@ int main(int argc, char *argv[])
 	  }
         
         swarmAvgFitness /= (double)populationSize;
+	genAvgFitness.push_back(swarmAvgFitness);
+	swarmAvgVigilance /= (double)populationSize;
+	genAvgVigilance.push_back(swarmAvgVigilance);
 		
 	cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	
@@ -397,7 +413,7 @@ int main(int argc, char *argv[])
     FILE *LOD = fopen(LODFileName.c_str(), "w");
     
     //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-    fprintf(LOD, "generation, percent_time_vigilant\n");
+    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness\n");
     
     cout << "analyzing ancestor list" << endl;
     
@@ -412,7 +428,9 @@ int main(int argc, char *argv[])
 	    timeVigilant++;
 	}
       timeVigilant = timeVigilant / 1000;
-      fprintf(LOD, "%d,%f\n", (*it)->born, timeVigilant);
+      fprintf(LOD, "%d,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front());
+      genAvgFitness.pop_front();
+      genAvgVigilance.pop_front();
       // collect quantitative stats
       //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
     }
