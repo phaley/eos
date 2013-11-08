@@ -27,6 +27,5 @@
 #define     maxNodes        16
 #define     swarmSize       50
 #define     predCount       2
-#define     foodCount       20
 
 #endif

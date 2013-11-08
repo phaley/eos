@@ -31,7 +31,7 @@
 #define indvAwareKillProb       0.10
 #define groupAwareThreshold     5
 #define groupAwareProbStep      (int) ((groupAwareKillProb - indvAwareKillProb) / (swarmSize / groupAwareThreshold))
-#define incrementProbs          true
+#define incrementProbs          false
 
 #define attackDuration          5
 #define attackDelayMean         5
@@ -209,7 +209,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
 		  }
 		// activate each swarm agent's brain, determine its action for this update, and update its position and angle
   		swarm[i]->updateStates();
-		if(swarm[i]->states[0] & 1 == 1)
+		if((swarm[i]->states[0] & 1) == 1)
 		  {
 		    vigilance[i] = true;
 		  }

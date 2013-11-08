@@ -317,9 +317,17 @@ int main(int argc, char *argv[])
 	swarmMaxFitness = 0.0;
         double swarmAvgFitness = 0.0;
 	double swarmAvgVigilance = 0.0;
-        
-	game->executeGame(swarmAgents, NULL, false, confusionMultiplier, vigilanceFoodPenalty);
-       
+
+	int startAgent = 0;
+	while(startAgent < populationSize) {
+	  vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
+	  vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + swarmSize;
+	  vector<tAgent*> gameGroup(first, last);
+	  game->executeGame(gameGroup, NULL, false, confusionMultiplier, vigilanceFoodPenalty);
+	  startAgent += swarmSize;
+	  gameGroup.clear();
+	}
+
 	for(int i = 0; i < populationSize; ++i)
 	  {
 	    swarmAvgFitness += swarmAgents[i]->fitness;
@@ -364,6 +372,8 @@ int main(int argc, char *argv[])
 	    SANextGen[i] = offspring;
 	  }
 	
+	random_shuffle(SANextGen.begin(), SANextGen.end());
+
 	for(int i = 0; i < populationSize; ++i)
 	  {
             // retire and replace the swarm agents from the previous generation
