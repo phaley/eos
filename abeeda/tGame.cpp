@@ -26,11 +26,10 @@
 #include <stdio.h>
 
 // simulation-specific constants
-#define unawareKillProb         0.90
+#define unawareKillProb         0.10
 #define groupAwareKillProb      0.50
-#define indvAwareKillProb       0.10
+#define indvAwareKillProb       0.90
 #define groupAwareThreshold     5
-#define groupAwareProbStep      (int) ((groupAwareKillProb - indvAwareKillProb) / (swarmSize / groupAwareThreshold))
 #define incrementProbs          false
 
 #define attackDuration          5
@@ -48,7 +47,8 @@ tGame::tGame() { }
 tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
-string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty)
+string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
+			  bool zeroOutDeadPrey)
 {
 
     // LOD data variables
@@ -75,6 +75,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
     // tables of agents to receive broadcast signals
     bool receivedBroadcast[swarmSize];
     bool sentBroadcast[swarmSize];
+
+    int groupAwareProbStep = (int) ((groupAwareKillProb - indvAwareKillProb) / (swarmSize / groupAwareThreshold));
  
     // string containing the information to create a video of the simulation
     string reportString = "";
@@ -226,7 +228,14 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool r
   
     for(int i = 0; i < swarmSize; ++i)
       {
-	swarmAgents[i]->fitness = swarm[i]->fitness;
+	if(!preyDead[i] || !zeroOutDeadPrey)
+	  {
+	    swarmAgents[i]->fitness = swarm[i]->fitness;
+	  }
+	else
+	  {
+	    swarmAgents[i]->fitness = 0;
+	  }
 	delete swarm[i];
       }
   

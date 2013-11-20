@@ -25,7 +25,5 @@
 #define     cPI             3.14159265
 #define     randDouble      ((double)rand() / (double)RAND_MAX)
 #define     maxNodes        16
-#define     swarmSize       50
-#define     predCount       2
 
 #endif

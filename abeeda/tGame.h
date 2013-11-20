@@ -52,7 +52,8 @@ class tGame{
 public:
     tExperiment theExperiment;
     void loadExperiment(char *filename);
-    string executeGame(vector<tAgent*> & swarmAgents, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty);
+    string executeGame(vector<tAgent*> & swarmAgents, int groupSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
+		       bool zeroOutDeadPrey);
     tGame();
     ~tGame();
     int newPredDelay(void);

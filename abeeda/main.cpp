@@ -70,9 +70,13 @@ using namespace std;
 
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
-int     populationSize              = 50;
+int     populationSize              = 100;
+int     groupSize                   = 50;
 int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
+
+bool    homogeneous                 = false;
+bool    zeroOutDeadPrey             = false;
 
 bool    track_best_brains           = false;
 int     track_best_brains_frequency = 25;
@@ -94,10 +98,6 @@ int main(int argc, char *argv[])
   int displayDirectoryArgvIndex = 0;
   deque<double> genAvgFitness,genAvgVigilance;
   
-  // initial object setup
-  swarmAgents.resize(populationSize);
-  game = new tGame;
-  swarmAgent = new tAgent;
     
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
@@ -212,7 +212,36 @@ int main(int argc, char *argv[])
 	  
 	  vigilanceFoodPenalty = atof(argv[i]);
 	}
+      // -pop [float]: set population size for the GA
+      else if (strcmp(argv[i], "-pop") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+	  
+	  populationSize = atof(argv[i]);
+	}
+      // -gsz [float]: set group size for the evaluation
+      else if (strcmp(argv[i], "-gsz") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+	  
+	  groupSize = atof(argv[i]);
+	}
+      // -cln: set evaluation to work on clones of genotypes
+      else if (strcmp(argv[i], "-cln") == 0 && (i + 1) < argc)
+	{
+	  homogeneous = true;
+	}
+      // -zdp: use to zero out the fitness of prey that die
+      else if (strcmp(argv[i], "-zdp") == 0 && (i + 1) < argc)
+	{
+	  zeroOutDeadPrey = true;
+	}
     }
+  
+  // initial object setup
+  swarmAgents.resize(populationSize);
+  game = new tGame;
+  swarmAgent = new tAgent;
   
   if (display_directory)
     {
@@ -317,16 +346,39 @@ int main(int argc, char *argv[])
 	swarmMaxFitness = 0.0;
         double swarmAvgFitness = 0.0;
 	double swarmAvgVigilance = 0.0;
-
-	int startAgent = 0;
-	while(startAgent < populationSize) {
-	  vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
-	  vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + swarmSize;
-	  vector<tAgent*> gameGroup(first, last);
-	  game->executeGame(gameGroup, NULL, false, confusionMultiplier, vigilanceFoodPenalty);
-	  startAgent += swarmSize;
-	  gameGroup.clear();
-	}
+	
+	if(homogeneous)
+	  {
+	    for(int i = 0; i < populationSize; ++i)
+	      {
+		vector<tAgent*> gameGroup(groupSize);
+		for(int j = 0; j < groupSize; ++j)
+		  {
+		    gameGroup[j] = new tAgent;
+		    gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
+		  }
+		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey);
+		for(int j = 0; j < groupSize; ++j)
+		  {
+		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
+		  }
+		swarmAgents[i]->fitness = swarmAgents[i]->fitness / groupSize;
+		gameGroup.clear();
+	      }
+	  }
+	else
+	  {
+	    int startAgent = 0;
+	    while(startAgent < populationSize)
+	      {
+		vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
+		vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
+		vector<tAgent*> gameGroup(first, last);
+		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey);
+		startAgent += groupSize;
+		gameGroup.clear();
+	      }
+	  }
 
 	for(int i = 0; i < populationSize; ++i)
 	  {

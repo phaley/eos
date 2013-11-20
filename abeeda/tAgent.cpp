@@ -271,7 +271,7 @@ unsigned char * tAgent::getStatesPointer(void)
 
 void tAgent::resetBrain(void)
 {
-	for(int i=0;i<maxNodes*swarmSize;i++)
+	for(int i=0;i<maxNodes;i++)
     {
 		states[i]=0;
     }
@@ -287,7 +287,7 @@ void tAgent::updateStates(void)
 		(*it)->update(&states[0],&newStates[0]);
     }
     
-	for(int i=0;i<maxNodes*swarmSize;i++)
+	for(int i=0;i<maxNodes;i++)
     {
 		states[i]=newStates[i];
 		newStates[i]=0;
