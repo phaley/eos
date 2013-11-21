@@ -227,12 +227,12 @@ int main(int argc, char *argv[])
 	  groupSize = atof(argv[i]);
 	}
       // -cln: set evaluation to work on clones of genotypes
-      else if (strcmp(argv[i], "-cln") == 0 && (i + 1) < argc)
+      else if (strcmp(argv[i], "-cln") == 0)
 	{
 	  homogeneous = true;
 	}
       // -zdp: use to zero out the fitness of prey that die
-      else if (strcmp(argv[i], "-zdp") == 0 && (i + 1) < argc)
+      else if (strcmp(argv[i], "-zdp") == 0)
 	{
 	  zeroOutDeadPrey = true;
 	}
@@ -361,6 +361,7 @@ int main(int argc, char *argv[])
 		for(int j = 0; j < groupSize; ++j)
 		  {
 		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
+		    delete gameGroup[j];
 		  }
 		swarmAgents[i]->fitness = swarmAgents[i]->fitness / groupSize;
 		gameGroup.clear();
