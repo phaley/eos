@@ -32,8 +32,11 @@
 #define groupAwareThreshold     5
 #define incrementProbs          false
 
+#define FORCED_GROUP            0
+#define FORCED_LONER            1
+#define CHOOSE_MODE             2
+
 #define attackDuration          5
-#define attackDelayMean         5
 #define attackDelayRange        10/2
 #define totalStepsInSimulation  2000
 
@@ -42,13 +45,15 @@ double cosLookup[360];
 double sinLookup[360];
 //double atan2Lookup[(int)gridY * 4][(int)gridX * 4];
 
+int attackDelayMean = 5;
+
 tGame::tGame() { }
 
 tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
 string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
-			  bool zeroOutDeadPrey)
+			  bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate)
 {
 
     // LOD data variables
@@ -60,6 +65,14 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 
     int predatorDelay = newPredDelay();
     int attackCounter = attackDuration;
+    if(relativeAttackRate)
+      {
+	attackDelayMean = (int) (totalStepsInSimulation / (attackRate * swarmSize));
+      }
+    else
+      {
+	attackDelayMean = attackRate;
+      }
 
     // set of all prey brains
     tAgent* swarm[swarmSize];
@@ -69,6 +82,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
     bool vigilance[swarmSize];
     // whether a given agent is aware of the predator
     bool awareness[swarmSize];
+    // whether a given agent has chosen to group
+    bool grouped[swarmSize];
     // food reward while vigilant
     double vigilanceFood = 1 - vigilanceFoodPenalty;
 
@@ -93,6 +108,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	awareness[i] = false;
 	receivedBroadcast[i] = false;
 	sentBroadcast[i] = false;
+	grouped[i] = (groupMode == FORCED_GROUP) ? true : false;
       }
     
     for(int step = 0; step < totalStepsInSimulation; ++step)
@@ -138,13 +154,16 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			bool groupAware = false;
 			for(int i = 0; i < swarmSize; ++i)
 			  {
-			    if(awareness[i])
+			    if(grouped[i])
 			      {
-				awareCount++;
-				groupAware = true;
+				if(awareness[i])
+				  {
+				    awareCount++;
+				    groupAware = true;
+				  }
 			      }
 			  }
-			if(groupAware)
+			if(grouped[target] && groupAware)
 			  {
 			    if(incrementProbs)
 			      {
@@ -219,6 +238,17 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    vigilance[i] = false;
 		  }
+		if(groupMode == CHOOSE_MODE)
+		  {
+		    if((swarm[i]->states[1] & 1) == 1)
+		      {
+			grouped[i] = true;
+		      }
+		    else
+		      {
+			grouped[i] = false;
+		      }
+		  }
 	      }
 	  }
         /*       END OF SWARM UPDATE       */
@@ -234,7 +264,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	  }
 	else
 	  {
-	    swarmAgents[i]->fitness = 0;
+	    swarmAgents[i]->fitness = 1;
 	  }
 	delete swarm[i];
       }
@@ -259,7 +289,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 int tGame::newPredDelay(void) {
     int delay;
     do {
-      delay = (((int) sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble)) * attackDelayRange) + attackDelayMean;
+      int sign = randDouble > 0.5 ? 1 : -1;
+      delay = (((int) sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble)) * attackDelayRange * sign) + attackDelayMean;
     } while(delay <= 0);
     return delay;
 }

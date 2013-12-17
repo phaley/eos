@@ -77,6 +77,8 @@ tGame   *game                       = NULL;
 
 bool    homogeneous                 = false;
 bool    zeroOutDeadPrey             = false;
+bool    relativeAttackRate          = false;
+int     groupMode                   = 0;
 
 bool    track_best_brains           = false;
 int     track_best_brains_frequency = 25;
@@ -85,6 +87,7 @@ bool    make_logic_table            = false;
 bool    make_dot_pred               = false;
 bool    make_dot_swarm              = false;
 int     killDelay                   = 10;
+int     attackRate                  = 50;
 double  confusionMultiplier         = 1.0;
 double  vigilanceFoodPenalty        = 1.0;
 
@@ -96,8 +99,7 @@ int main(int argc, char *argv[])
   string LODFileName = "", swarmGenomeFileName = "", inputGenomeFileName = "";
   string swarmDotFileName = "", logicTableFileName = "";
   int displayDirectoryArgvIndex = 0;
-  deque<double> genAvgFitness,genAvgVigilance;
-  
+  deque<double> genAvgFitness,genAvgVigilance,genAvgGrouped;  
     
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
@@ -236,6 +238,29 @@ int main(int argc, char *argv[])
 	{
 	  zeroOutDeadPrey = true;
 	}
+      // -aar [float]: set absolute attack rate for the evaluation
+      else if (strcmp(argv[i], "-aar") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+	  
+	  attackRate = atof(argv[i]);
+	}
+      // -rar [float]: set attacks per individual for the evaluation
+      else if (strcmp(argv[i], "-rar") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+	  
+	  relativeAttackRate = true;
+	  attackRate = atof(argv[i]);
+	}
+      // -grp [float]: set grouping mode for the evaluation
+      // 0 is forced group, 1 is forced ungrouping, 2 is choose to group
+      else if (strcmp(argv[i], "-grp") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+	  
+	  groupMode = atof(argv[i]);
+	}
     }
   
   // initial object setup
@@ -346,6 +371,7 @@ int main(int argc, char *argv[])
 	swarmMaxFitness = 0.0;
         double swarmAvgFitness = 0.0;
 	double swarmAvgVigilance = 0.0;
+	double swarmAvgGrouped = 0.0;
 	
 	if(homogeneous)
 	  {
@@ -357,7 +383,8 @@ int main(int argc, char *argv[])
 		    gameGroup[j] = new tAgent;
 		    gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
 		  }
-		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey);
+		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
+				  groupMode, relativeAttackRate, attackRate);
 		for(int j = 0; j < groupSize; ++j)
 		  {
 		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
@@ -375,7 +402,8 @@ int main(int argc, char *argv[])
 		vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
 		vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
 		vector<tAgent*> gameGroup(first, last);
-		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey);
+		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
+				  groupMode, relativeAttackRate, attackRate);
 		startAgent += groupSize;
 		gameGroup.clear();
 	      }
@@ -387,15 +415,20 @@ int main(int argc, char *argv[])
 	    
 	    swarmAgents[i]->setupPhenotype();
 	    double agentAvgVigilance = 0;
+	    double agentAvgGrouped = 0;
 	    for(int j = 0; j < 1000; ++j)
 	      {
 		swarmAgents[i]->updateStates();
 		if((swarmAgents[i]->states[0] & 1) == 1)
 		  agentAvgVigilance++;
+		if((swarmAgents[i]->states[1] & 1) == 1)
+		  agentAvgGrouped++;
 	      }
 	    agentAvgVigilance /= 1000;
 	    swarmAvgVigilance += agentAvgVigilance;
-            
+	    agentAvgGrouped /= 1000;
+	    swarmAvgGrouped += agentAvgGrouped;
+
             if(swarmAgents[i]->fitness > swarmMaxFitness)
             {
                 swarmMaxFitness = swarmAgents[i]->fitness;
@@ -407,6 +440,8 @@ int main(int argc, char *argv[])
 	genAvgFitness.push_back(swarmAvgFitness);
 	swarmAvgVigilance /= (double)populationSize;
 	genAvgVigilance.push_back(swarmAvgVigilance);
+	swarmAvgGrouped /= (double)populationSize;
+	genAvgGrouped.push_back(swarmAvgGrouped);
 		
 	cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	
@@ -476,7 +511,7 @@ int main(int argc, char *argv[])
     FILE *LOD = fopen(LODFileName.c_str(), "w");
     
     //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness\n");
+    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped\n");
     
     cout << "analyzing ancestor list" << endl;
     
@@ -491,9 +526,10 @@ int main(int argc, char *argv[])
 	    timeVigilant++;
 	}
       timeVigilant = timeVigilant / 1000;
-      fprintf(LOD, "%d,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front());
+      fprintf(LOD, "%d,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(), genAvgGrouped.front());
       genAvgFitness.pop_front();
       genAvgVigilance.pop_front();
+      genAvgGrouped.pop_front();
       // collect quantitative stats
       //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
     }

@@ -53,7 +53,7 @@ public:
     tExperiment theExperiment;
     void loadExperiment(char *filename);
     string executeGame(vector<tAgent*> & swarmAgents, int groupSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
-		       bool zeroOutDeadPrey);
+		       bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate);
     tGame();
     ~tGame();
     int newPredDelay(void);
