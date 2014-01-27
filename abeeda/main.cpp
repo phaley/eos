@@ -78,6 +78,7 @@ tGame   *game                       = NULL;
 bool    homogeneous                 = false;
 bool    zeroOutDeadPrey             = false;
 bool    relativeAttackRate          = false;
+bool    penalizeGrouping            = false;
 int     groupMode                   = 0;
 
 bool    track_best_brains           = false;
@@ -90,6 +91,7 @@ int     killDelay                   = 10;
 int     attackRate                  = 50;
 double  confusionMultiplier         = 1.0;
 double  vigilanceFoodPenalty        = 1.0;
+double  groupingPenalty             = 1.0;
 
 int main(int argc, char *argv[])
 {
@@ -261,6 +263,14 @@ int main(int argc, char *argv[])
 	  
 	  groupMode = atof(argv[i]);
 	}
+      // -gp [float]: penalize grouping relative to group size (default: 1.0, range: [0,1])
+      else if (strcmp(argv[i], "-gp") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+
+	  penalizeGrouping = true;
+	  groupingPenalty = atof(argv[i]);
+	}
     }
   
   // initial object setup
@@ -384,7 +394,7 @@ int main(int argc, char *argv[])
 		    gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
 		  }
 		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate);
+				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty);
 		for(int j = 0; j < groupSize; ++j)
 		  {
 		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
@@ -403,7 +413,7 @@ int main(int argc, char *argv[])
 		vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
 		vector<tAgent*> gameGroup(first, last);
 		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate);
+				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty);
 		startAgent += groupSize;
 		gameGroup.clear();
 	      }

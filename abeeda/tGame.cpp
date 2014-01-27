@@ -53,9 +53,8 @@ tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
 string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
-			  bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate)
+			  bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate, bool penalizeGrouping, double groupingPenalty)
 {
-
     // LOD data variables
     double swarmFitness = 0.0;
     // counter of how many swarm agents are still alive
@@ -138,7 +137,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    int target;
 		    do {
-		      target = randDouble * swarmSize;
+		      target = (int) (randDouble * swarmSize);
 		    } while(preyDead[target]);
 		    if(awareness[target])
 		      {
@@ -167,7 +166,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			  {
 			    if(incrementProbs)
 			      {
-				if(groupAwareKillProb - groupAwareProbStep * awareCount > randDouble)
+				if((groupAwareKillProb - (groupAwareProbStep * awareCount)) > randDouble)
 				  {
 				    preyDead[target] = true;
 				    numAlive--;
@@ -211,6 +210,16 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
         
 	/*       END OF PREDATOR UPDATE       */
         
+	int numGrouped = 0;
+
+	for(int i = 0; i < swarmSize; ++i)
+	  {
+	    if(grouped[i])
+	      {
+		numGrouped++;
+	      }
+	  }
+
 	/*       UPDATE SWARM       */
 	for(int i = 0; i < swarmSize; ++i)
 	  {
@@ -218,7 +227,14 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	      {
 		if(!vigilance[i])
 		  {
-		    swarm[i]->fitness++;
+		    if(grouped[i] && penalizeGrouping)
+		      {
+			swarm[i]->fitness += 1 / (groupingPenalty * numGrouped);
+		      }
+		    else
+		      {
+			swarm[i]->fitness++;
+		      }
 		  }
 		else
 		  {
@@ -226,7 +242,14 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		      {
 			awareness[i] = true;
 		      }
-		    swarm[i]-> fitness += vigilanceFood;
+		    if(grouped[i] && penalizeGrouping)
+		      {
+			swarm[i]->fitness += vigilanceFood / (groupingPenalty * numGrouped);
+		      }
+		    else
+		      {
+			swarm[i]-> fitness += vigilanceFood;
+		      }
 		  }
 		// activate each swarm agent's brain, determine its action for this update, and update its position and angle
   		swarm[i]->updateStates();
