@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
   string LODFileName = "", swarmGenomeFileName = "", inputGenomeFileName = "";
   string swarmDotFileName = "", logicTableFileName = "";
   int displayDirectoryArgvIndex = 0;
-  deque<double> genAvgFitness,genAvgVigilance,genAvgGrouped;  
+  deque<double> genAvgFitness,genAvgVigilance,genAvgGrouped,genAvgVigilantGrouped;  
     
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
@@ -382,6 +382,7 @@ int main(int argc, char *argv[])
         double swarmAvgFitness = 0.0;
 	double swarmAvgVigilance = 0.0;
 	double swarmAvgGrouped = 0.0;
+	double swarmAvgVigilantGrouped = 0.0;
 	
 	if(homogeneous)
 	  {
@@ -426,18 +427,25 @@ int main(int argc, char *argv[])
 	    swarmAgents[i]->setupPhenotype();
 	    double agentAvgVigilance = 0;
 	    double agentAvgGrouped = 0;
+	    double agentAvgVigilantGrouped = 0;
 	    for(int j = 0; j < 1000; ++j)
 	      {
 		swarmAgents[i]->updateStates();
-		if((swarmAgents[i]->states[0] & 1) == 1)
+		bool vigilant = (swarmAgents[i]->states[0] & 1) == 1;
+		bool grouped = (swarmAgents[i]->states[1] & 1) == 1;
+		if(vigilant)
 		  agentAvgVigilance++;
-		if((swarmAgents[i]->states[1] & 1) == 1)
+		if(grouped)
 		  agentAvgGrouped++;
+		if(vigilant && grouped)
+		  agentAvgVigilantGrouped++;
 	      }
 	    agentAvgVigilance /= 1000;
 	    swarmAvgVigilance += agentAvgVigilance;
 	    agentAvgGrouped /= 1000;
 	    swarmAvgGrouped += agentAvgGrouped;
+	    agentAvgVigilantGrouped /= 1000;
+	    swarmAvgVigilantGrouped += agentAvgGrouped;
 
             if(swarmAgents[i]->fitness > swarmMaxFitness)
             {
@@ -452,6 +460,8 @@ int main(int argc, char *argv[])
 	genAvgVigilance.push_back(swarmAvgVigilance);
 	swarmAvgGrouped /= (double)populationSize;
 	genAvgGrouped.push_back(swarmAvgGrouped);
+	swarmAvgVigilantGrouped /= (double)populationSize;
+	genAvgVigilantGrouped.push_back(swarmAvgGrouped);
 		
 	cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	
@@ -521,7 +531,7 @@ int main(int argc, char *argv[])
     FILE *LOD = fopen(LODFileName.c_str(), "w");
     
     //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped\n");
+    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped,average_time_vigilant_and_grouped\n");
     
     cout << "analyzing ancestor list" << endl;
     
@@ -536,10 +546,12 @@ int main(int argc, char *argv[])
 	    timeVigilant++;
 	}
       timeVigilant = timeVigilant / 1000;
-      fprintf(LOD, "%d,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(), genAvgGrouped.front());
+      fprintf(LOD, "%d,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(),
+	      genAvgGrouped.front(), genAvgVigilantGrouped.front());
       genAvgFitness.pop_front();
       genAvgVigilance.pop_front();
       genAvgGrouped.pop_front();
+      genAvgVigilantGrouped.pop_front();
       // collect quantitative stats
       //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
     }
