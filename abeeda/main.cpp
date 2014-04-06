@@ -92,6 +92,7 @@ int     attackRate                  = 50;
 double  confusionMultiplier         = 1.0;
 double  vigilanceFoodPenalty        = 1.0;
 double  groupingPenalty             = 1.0;
+double  foragingFood                = 1.0;
 
 int main(int argc, char *argv[])
 {
@@ -271,6 +272,13 @@ int main(int argc, char *argv[])
 	  penalizeGrouping = true;
 	  groupingPenalty = atof(argv[i]);
 	}
+      // -ff [float]: set the amount of food a non-vigilant prey receives
+      else if (strcmp(argv[i], "-ffa") == 0 && (i + 1) < argc)
+	{
+	  ++i;
+
+	  foragingFood = atof(argv[i]);
+	}
     }
   
   // initial object setup
@@ -395,7 +403,7 @@ int main(int argc, char *argv[])
 		    gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
 		  }
 		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty);
+				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
 		for(int j = 0; j < groupSize; ++j)
 		  {
 		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
@@ -414,7 +422,7 @@ int main(int argc, char *argv[])
 		vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
 		vector<tAgent*> gameGroup(first, last);
 		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty);
+				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
 		startAgent += groupSize;
 		gameGroup.clear();
 	      }

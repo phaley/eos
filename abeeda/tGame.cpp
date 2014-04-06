@@ -52,8 +52,9 @@ tGame::tGame() { }
 tGame::~tGame() { }
 
 // runs the simulation for the given agent(s)
-string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier, double vigilanceFoodPenalty,
-			  bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate, bool penalizeGrouping, double groupingPenalty)
+string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier,
+			  double vigilanceFoodPenalty, bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate,
+			  bool penalizeGrouping, double groupingPenalty, double foragingFood)
 {
     // LOD data variables
     double swarmFitness = 0.0;
@@ -84,7 +85,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
     // whether a given agent has chosen to group
     bool grouped[swarmSize];
     // food reward while vigilant
-    double vigilanceFood = 1 - vigilanceFoodPenalty;
+    double vigilanceFood = foragingFood - vigilanceFoodPenalty;
 
     // tables of agents to receive broadcast signals
     bool receivedBroadcast[swarmSize];
@@ -233,7 +234,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		      }
 		    else
 		      {
-			swarm[i]->fitness++;
+			swarm[i]->fitness += foragingFood;
 		      }
 		  }
 		else
