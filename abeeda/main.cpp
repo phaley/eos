@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
 	  groupingPenalty = atof(argv[i]);
 	}
       // -ff [float]: set the amount of food a non-vigilant prey receives
-      else if (strcmp(argv[i], "-ffa") == 0 && (i + 1) < argc)
+      else if (strcmp(argv[i], "-ff") == 0 && (i + 1) < argc)
 	{
 	  ++i;
 
