@@ -453,7 +453,7 @@ int main(int argc, char *argv[])
 	    agentAvgGrouped /= 1000;
 	    swarmAvgGrouped += agentAvgGrouped;
 	    agentAvgVigilantGrouped /= 1000;
-	    swarmAvgVigilantGrouped += agentAvgGrouped;
+	    swarmAvgVigilantGrouped += agentAvgVigilantGrouped;
 
             if(swarmAgents[i]->fitness > swarmMaxFitness)
             {

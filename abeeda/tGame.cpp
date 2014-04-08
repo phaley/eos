@@ -87,8 +87,6 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
     // food reward while vigilant
     double vigilanceFood = foragingFood - vigilanceFoodPenalty;
 
-    cout << vigilanceFood << endl;
-
     // tables of agents to receive broadcast signals
     bool receivedBroadcast[swarmSize];
     bool sentBroadcast[swarmSize];
