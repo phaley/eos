@@ -469,7 +469,7 @@ int main(int argc, char *argv[])
 	swarmAvgGrouped /= (double)populationSize;
 	genAvgGrouped.push_back(swarmAvgGrouped);
 	swarmAvgVigilantGrouped /= (double)populationSize;
-	genAvgVigilantGrouped.push_back(swarmAvgGrouped);
+	genAvgVigilantGrouped.push_back(swarmAvgVigilantGrouped);
 		
 	cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	
