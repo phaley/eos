@@ -26,8 +26,8 @@
 #include <stdio.h>
 
 // simulation-specific constants
-#define unawareKillProb         0.90
-#define groupAwareKillProb      0.50
+#define unawareKillProb         1.00
+#define groupAwareKillProb      0.30
 #define indvAwareKillProb       0.10
 #define groupAwareThreshold     5
 #define incrementProbs          false

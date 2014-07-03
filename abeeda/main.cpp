@@ -106,6 +106,14 @@ int main(int argc, char *argv[])
     
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
+
+  for (int i = 0; i < argc; ++i)
+    {
+      cout << argv[i];
+      cout << " ";
+    }
+
+  cout << endl;
   
   for (int i = 1; i < argc; ++i)
     {
