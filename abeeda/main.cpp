@@ -70,11 +70,14 @@ using namespace std;
 
 //double  replacementRate             = 0.1;
 double  perSiteMutationRate         = 0.005;
+double  groupSizeMutationRate       = 0.01;
 int     populationSize              = 100;
 int     groupSize                   = 50;
+int     groupSizeRange              = 10;
 int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
 
+bool    evolveGroupSize             = false;
 bool    homogeneous                 = false;
 bool    zeroOutDeadPrey             = false;
 bool    relativeAttackRate          = false;
@@ -114,7 +117,7 @@ int main(int argc, char *argv[])
     }
 
   cout << endl;
-  
+
   for (int i = 1; i < argc; ++i)
     {
       // -dd [directory]: display all genome files in a given directory
@@ -287,296 +290,397 @@ int main(int argc, char *argv[])
 
 	  foragingFood = atof(argv[i]);
 	}
+      // -egs: set program to evolve group sizes in addition to agents
+      else if (strcmp(argv[i], "-egs") == 0)
+	{
+	  evolveGroupSize = true;
+	}
     }
   
   // initial object setup
   swarmAgents.resize(populationSize);
   game = new tGame;
   swarmAgent = new tAgent;
+  swarmAgent->setupRandomAgent(5000);
   
-  if (display_directory)
+  if(evolveGroupSize)
     {
-      DIR *dir;
-      struct dirent *ent;
-      dir = opendir(argv[displayDirectoryArgvIndex]);
+      FILE *LOD = fopen(LODFileName.c_str(), "w");
       
-      // map: run # -> [swarm file name, predator file name]
-      map< int, vector<string> > fileNameMap;
+      fprintf(LOD, "generation,dom_group_fitness,dom_group_size,dom_group_vigilance,avg_group_fitness,avg_group_size,avg_group_vigilance\n");
       
-      if (dir != NULL)
-        {
-	  cout << "reading in files" << endl;
-          
-	  // read all of the files in the directory
-	  while ((ent = readdir(dir)) != NULL)
-            {
-	      string dirFile = string(ent->d_name);
-              
-	      if (dirFile.find(".genome") != string::npos)
-                {
-		  // find the first character in the file name that is a digit
-		  int i = 0;
-                  
-		  for ( ; i < dirFile.length(); ++i)
-                    {
-		      if (isdigit(dirFile[i]))
-                        {
-			  break;
-                        }
-                    }
-		  
-		  // get the run number from the file name
-		  int runNumber = atoi(dirFile.substr(i).c_str());
-                  
-		  if (fileNameMap[runNumber].size() == 0)
-                    {
-		      fileNameMap[runNumber].resize(2);
-                    }
-		  
-		  // map the file name into the appropriate location
-		  if (dirFile.find("swarm") != string::npos)
-                    {
-		      fileNameMap[runNumber][0] = argv[displayDirectoryArgvIndex] + dirFile;
-                    }
-		  else if (dirFile.find("predator") != string::npos)
-                    {
-		      fileNameMap[runNumber][1] = argv[displayDirectoryArgvIndex] + dirFile;
-                    }
-                }
-            }
-	  
-	  closedir(dir);
-        }
-      else
-        {
-	  cerr << "invalid directory: " << argv[displayDirectoryArgvIndex] << endl;
-	  exit(0);
-        }
-    }
-  
-  if (make_logic_table)
-    {
-        swarmAgent->saveLogicTable(logicTableFileName.c_str());
-        exit(0);
-    }
-    
-  if (make_dot_swarm)
-    {
-        swarmAgent->saveToDot(swarmDotFileName.c_str(), false);
-        exit(0);
-    }
-  
-    // seed the agents
-    delete swarmAgent;
-    swarmAgent = new tAgent;
-    swarmAgent->setupRandomAgent(5000);
-    //swarmAgent->loadAgent("startSwarm.genome");
-    
-    // make mutated copies of the start genome to fill up the initial population
-    for(int i = 0; i < populationSize; ++i)
-      {
-	swarmAgents[i] = new tAgent;
-	swarmAgents[i]->inherit(swarmAgent, 0.01, 1);
-      }
-    
-    SANextGen.resize(populationSize);
-    
-    cout << "setup complete" << endl;
-    cout << "starting evolution" << endl;
-    
-    // main loop
-    for (int update = 1; update <= totalGenerations; ++update)
-      {
-        // reset fitnesses
-	for(int i = 0; i < populationSize; ++i)
-	  {
-	    swarmAgents[i]->fitness = 0.0;
-	  }
-        
-        // determine fitness of population
-	swarmMaxFitness = 0.0;
-        double swarmAvgFitness = 0.0;
-	double swarmAvgVigilance = 0.0;
-	double swarmAvgGrouped = 0.0;
-	double swarmAvgVigilantGrouped = 0.0;
-	
-	if(homogeneous)
-	  {
-	    for(int i = 0; i < populationSize; ++i)
-	      {
-		vector<tAgent*> gameGroup(groupSize);
-		for(int j = 0; j < groupSize; ++j)
-		  {
-		    gameGroup[j] = new tAgent;
-		    gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
-		  }
-		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
-		for(int j = 0; j < groupSize; ++j)
-		  {
-		    swarmAgents[i]->fitness += gameGroup[j]->fitness;
-		    delete gameGroup[j];
-		  }
-		swarmAgents[i]->fitness = swarmAgents[i]->fitness / groupSize;
-		gameGroup.clear();
-	      }
-	  }
-	else
-	  {
-	    int startAgent = 0;
-	    while(startAgent < populationSize)
-	      {
-		vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
-		vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
-		vector<tAgent*> gameGroup(first, last);
-		game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				  groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
-		startAgent += groupSize;
-		gameGroup.clear();
-	      }
-	  }
-
-	for(int i = 0; i < populationSize; ++i)
-	  {
-	    swarmAvgFitness += swarmAgents[i]->fitness;
-	    
-	    swarmAgents[i]->setupPhenotype();
-	    double agentAvgVigilance = 0;
-	    double agentAvgGrouped = 0;
-	    double agentAvgVigilantGrouped = 0;
-	    for(int j = 0; j < 1000; ++j)
-	      {
-		swarmAgents[i]->updateStates();
-		bool vigilant = (swarmAgents[i]->states[0] & 1) == 1;
-		bool grouped = (swarmAgents[i]->states[1] & 1) == 1;
-		if(vigilant)
-		  agentAvgVigilance++;
-		if(grouped)
-		  agentAvgGrouped++;
-		if(vigilant && grouped)
-		  agentAvgVigilantGrouped++;
-	      }
-	    agentAvgVigilance /= 1000;
-	    swarmAvgVigilance += agentAvgVigilance;
-	    agentAvgGrouped /= 1000;
-	    swarmAvgGrouped += agentAvgGrouped;
-	    agentAvgVigilantGrouped /= 1000;
-	    swarmAvgVigilantGrouped += agentAvgVigilantGrouped;
-
-            if(swarmAgents[i]->fitness > swarmMaxFitness)
-            {
-                swarmMaxFitness = swarmAgents[i]->fitness;
-                bestSwarmAgent = swarmAgents[i];
-            }
-	  }
-        
-        swarmAvgFitness /= (double)populationSize;
-	genAvgFitness.push_back(swarmAvgFitness);
-	swarmAvgVigilance /= (double)populationSize;
-	genAvgVigilance.push_back(swarmAvgVigilance);
-	swarmAvgGrouped /= (double)populationSize;
-	genAvgGrouped.push_back(swarmAvgGrouped);
-	swarmAvgVigilantGrouped /= (double)populationSize;
-	genAvgVigilantGrouped.push_back(swarmAvgVigilantGrouped);
-		
-	cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
-	
-	for(int i = 0; i < populationSize; ++i)
-	  {
-	    // construct swarm agent population for the next generation
-	    tAgent *offspring = new tAgent;
-	    int j = 0;
-	    
-	    do
-	      {
-		j = rand() % populationSize;
-	      } while((j == i) || (randDouble > (swarmAgents[j]->fitness / swarmMaxFitness)));
-	    
-	    offspring->inherit(swarmAgents[j], perSiteMutationRate, update);
-	    SANextGen[i] = offspring;
-	  }
-	
-	random_shuffle(SANextGen.begin(), SANextGen.end());
-
-	for(int i = 0; i < populationSize; ++i)
-	  {
-            // retire and replace the swarm agents from the previous generation
-	    swarmAgents[i]->retire();
-	    swarmAgents[i]->nrPointingAtMe--;
-	    if(swarmAgents[i]->nrPointingAtMe == 0)
-	      {
-		delete swarmAgents[i];
-	      }
-	    swarmAgents[i] = SANextGen[i];
-	  }
-        
-	swarmAgents = SANextGen;
-        
-        if (track_best_brains && update % track_best_brains_frequency == 0)
-	  {
-            stringstream sss, pss;
-            
-            sss << "swarm" << update << ".genome";
-            
-            swarmAgents[0]->ancestor->ancestor->saveGenome(sss.str().c_str());
-	  }
-      }
-	
-    // save the genome file of the lmrca
-    swarmAgents[0]->ancestor->ancestor->saveGenome(swarmGenomeFileName.c_str());
-    
-    // save video and quantitative stats on the best swarm agent's LOD
-    vector<tAgent*> saveLOD;
-    
-    cout << "building ancestor list" << endl;
-    
-    // use 2 ancestors down from current population because that ancestor is highly likely to have high fitness
-    tAgent* curAncestor = swarmAgents[0]->ancestor->ancestor;
-    
-    while (curAncestor != NULL)
-      {
-        // don't add the base ancestor
-        if (curAncestor->ancestor != NULL)
-	  {
-            saveLOD.insert(saveLOD.begin(), curAncestor);
-	  }
-        
-        curAncestor = curAncestor->ancestor;
-      }
-    
-    FILE *LOD = fopen(LODFileName.c_str(), "w");
-    
-    //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-    fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped,average_time_vigilant_and_grouped\n");
-    
-    cout << "analyzing ancestor list" << endl;
-    
-    for (vector<tAgent*>::iterator it = saveLOD.begin(); it != saveLOD.end(); ++it)
-    {
-      (*it)->setupPhenotype();
-      double timeVigilant = 0;
-      for(int i = 0; i < 1000; ++i)
+      int maxGroup = 0;
+      int* groupSizes = new int[populationSize];
+      int* GSnextGen = new int[populationSize];
+      double maxGroupFitness = 0.0;
+      double* groupFitnesses = new double[populationSize];
+      double* maxAgentFitnesses = new double[populationSize];
+      // set up the initial sizes of each group
+      vector<tAgent*>* groupAgents = new vector<tAgent*>[populationSize];
+      vector<tAgent*>* GAnextGen = new vector<tAgent*>[populationSize];
+      for(int i = 0; i < populationSize; ++i)
 	{
-	  (*it)->updateStates();
-	  if(((*it)->states[0] & 1) == 1)
-	    timeVigilant++;
+	  groupSizes[i] = (int) ((randDouble * 20) + 1);
+	  // set up the initial agents for this group
+	  groupAgents[i].resize(groupSizes[i]);
+	  groupAgents[i][0] = new tAgent;
+	  groupAgents[i][0]->inherit(swarmAgent, perSiteMutationRate, 1);
+	  for(int j = 1; j < groupSizes[i]; ++j)
+	    {
+	      groupAgents[i][j] = new tAgent;
+	      // homogeneous populations are identical
+	      if(homogeneous)
+		{
+		  groupAgents[i][j]->inherit(groupAgents[i][0], 0.0, 1);
+		}
+	      // heterogeneous populations can have variation at the beginning
+	      else
+		{
+		  groupAgents[i][j]->inherit(swarmAgent, perSiteMutationRate, 1);
+		}
+	    }
 	}
-      timeVigilant = timeVigilant / 1000;
-      fprintf(LOD, "%d,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(),
-	      genAvgGrouped.front(), genAvgVigilantGrouped.front());
-      genAvgFitness.pop_front();
-      genAvgVigilance.pop_front();
-      genAvgGrouped.pop_front();
-      genAvgVigilantGrouped.pop_front();
-      // collect quantitative stats
-      //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
-    }
+      
+      cout << "setup complete" << endl;
+      cout << "starting evolution" << endl;
 
-    cout << "finished analyzing ancestor list" << endl;
-    
-    fclose(LOD);
-    
-    return 0;
+      // main loop
+      for(int update = 1; update <= totalGenerations; ++update)
+	{
+	  double maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance, grpVigilance, agtVigilance = 0.0;
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      maxAgentFitnesses[i] = 0.0;
+	      groupFitnesses[i] = 0.0;
+	      grpVigilance = 0.0;
+	      for(int j = 0; j < groupSizes[i]; ++j)
+		{
+		  groupAgents[i][j]->fitness = 0.0;
+		}
+	      // evaluate the fitness of the group
+	      game->executeGame(groupAgents[i], groupSizes[i], NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
+				groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+	      // the fitness of the group size is the average of the group
+	      for(int j = 0; j < groupSizes[i]; ++j)
+		{
+		  agtVigilance = 0.0;
+		  groupFitnesses[i] += groupAgents[i][j]->fitness;
+		  if(maxAgentFitnesses[i] < groupAgents[i][j]->fitness)
+		    {
+		      maxAgentFitnesses[i] = groupAgents[i][j]->fitness;
+		    }
+		  tAgent* testSubject = new tAgent;
+		  testSubject->inherit(groupAgents[i][j], 0.0, update);
+		  testSubject->setupPhenotype();
+		  for(int k = 0; k < 1000; ++k)
+		    {
+		      testSubject->updateStates();
+		      if((testSubject->states[0] & 1) == 1)
+			{
+			  agtVigilance++;
+			}
+		    }
+		  testSubject->retire();
+		  testSubject->nrPointingAtMe--;
+		  delete testSubject;
+		  agtVigilance /= 1000;
+		  grpVigilance += agtVigilance;
+		}
+	      groupFitnesses[i] /= groupSizes[i];
+	      avgFitness += groupFitnesses[i];
+	      grpVigilance /= groupSizes[i];
+	      avgVigilance += grpVigilance;
+	      avgGroupSize += groupSizes[i];
+	      if(maxGroupFitness < groupFitnesses[i])
+		{
+		  maxGroupFitness = groupFitnesses[i];
+		  domGroupSize = groupSizes[i];
+		  domVigilance = grpVigilance;
+		}
+	    }
+	  avgFitness /= populationSize;
+	  avgGroupSize /= populationSize;
+	  avgVigilance /= populationSize;
+	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f\n", update, maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance);
+	  // construct group sizes for the next update
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      int j = 0;
+	      do
+		{
+		  j = rand() % populationSize;
+		} while((j == i) || (randDouble  > (groupFitnesses[j] / maxGroupFitness)));
+	      int newGroupSize = groupSizes[j];
+	      if(randDouble < groupSizeMutationRate)
+		{
+		  do {
+		    int sign = randDouble > 0.5 ? 1 : -1;
+		    newGroupSize = (((int) sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble)) * groupSizeRange * sign) + groupSizes[j];
+		  } while(newGroupSize <= 0);
+		}
+	      GSnextGen[i] = newGroupSize;
+	      GAnextGen[i].resize(GSnextGen[i]);
+	      if(homogeneous)
+		{
+		  tAgent* offspring = new tAgent;
+		  int l = 0;
+		  do
+		    {
+		      l = rand() % groupSizes[j];
+		    } while(randDouble > (groupAgents[j][l]->fitness / maxAgentFitnesses[j]));
+		  offspring->inherit(groupAgents[j][l], perSiteMutationRate, update);
+		  GAnextGen[i][0] = offspring;
+		  for(int k = 1; k < GSnextGen[i]; ++k)
+		    {
+		      tAgent* clone = new tAgent;
+		      clone->inherit(offspring, 0.0, update);
+		      GAnextGen[i][k] = clone;
+		    }
+		}
+	      else
+		{
+		  for(int k = 0; k < GSnextGen[i]; ++k)
+		    {
+		      tAgent* offspring = new tAgent;
+		      int l = 0;
+		      do
+			{
+			  l = rand() % groupSizes[j];
+			} while(randDouble > (groupAgents[j][l]->fitness / maxAgentFitnesses[j]));
+		      offspring->inherit(groupAgents[j][l], perSiteMutationRate, update);
+		      GAnextGen[i][k] = offspring;
+		    }
+		}
+	    }
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      for(int j = 0; j < groupSizes[i]; ++j)
+		{
+		  groupAgents[i][j]->retire();
+		  groupAgents[i][j]->nrPointingAtMe--;
+		  if(groupAgents[i][j]->nrPointingAtMe == 0)
+		    {
+		      delete groupAgents[i][j];
+		    }
+		}
+	      groupSizes[i] = GSnextGen[i];
+	      groupAgents[i].resize(groupSizes[i]);
+	      for(int j = 0; j < groupSizes[i]; ++j)
+		{
+		  groupAgents[i][j] = GAnextGen[i][j];
+		}
+	    }
+	  cout << "generation " << update << ": swarm [" << (int)avgFitness << " : " << (int)maxGroupFitness << "]" << endl;
+	}
+      fclose(LOD);
+    }
+  else
+    {
+      // make mutated copies of the start genome to fill up the initial population
+      for(int i = 0; i < populationSize; ++i)
+	{
+	  swarmAgents[i] = new tAgent;
+	  swarmAgents[i]->inherit(swarmAgent, 0.01, 1);
+	}
+      
+      SANextGen.resize(populationSize);
+      
+      cout << "setup complete" << endl;
+      cout << "starting evolution" << endl;
+      
+      // main loop
+      for (int update = 1; update <= totalGenerations; ++update)
+	{
+	  // reset fitnesses
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+		 swarmAgents[i]->fitness = 0.0;
+	    }
+	  
+	  // determine fitness of population
+	  swarmMaxFitness = 0.0;
+	  double swarmAvgFitness = 0.0;
+	  double swarmAvgVigilance = 0.0;
+	  double swarmAvgGrouped = 0.0;
+	  double swarmAvgVigilantGrouped = 0.0;
+	  
+	  if(homogeneous)
+	    {
+	      for(int i = 0; i < populationSize; ++i)
+		{
+		  vector<tAgent*> gameGroup(groupSize);
+		  for(int j = 0; j < groupSize; ++j)
+		    {
+		      gameGroup[j] = new tAgent;
+		      gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
+		    }
+		  game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
+				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+		  for(int j = 0; j < groupSize; ++j)
+		    {
+		      swarmAgents[i]->fitness += gameGroup[j]->fitness;
+		      delete gameGroup[j];
+		    }
+		  swarmAgents[i]->fitness = swarmAgents[i]->fitness / groupSize;
+		  gameGroup.clear();
+		}
+	    }
+	  else
+	    {
+	      int startAgent = 0;
+	      while(startAgent < populationSize)
+		{
+		  vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
+		  vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
+		  vector<tAgent*> gameGroup(first, last);
+		  game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
+				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+		  startAgent += groupSize;
+		  gameGroup.clear();
+		}
+	    }
+	  
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      swarmAvgFitness += swarmAgents[i]->fitness;
+	      
+	      swarmAgents[i]->setupPhenotype();
+	      double agentAvgVigilance = 0;
+	      double agentAvgGrouped = 0;
+	      double agentAvgVigilantGrouped = 0;
+	      for(int j = 0; j < 1000; ++j)
+		{
+		  swarmAgents[i]->updateStates();
+		  bool vigilant = (swarmAgents[i]->states[0] & 1) == 1;
+		  bool grouped = (swarmAgents[i]->states[1] & 1) == 1;
+		  if(vigilant)
+		    agentAvgVigilance++;
+		  if(grouped)
+		    agentAvgGrouped++;
+		  if(vigilant && grouped)
+		    agentAvgVigilantGrouped++;
+		}
+	      agentAvgVigilance /= 1000;
+	      swarmAvgVigilance += agentAvgVigilance;
+	      agentAvgGrouped /= 1000;
+	      swarmAvgGrouped += agentAvgGrouped;
+	      agentAvgVigilantGrouped /= 1000;
+	      swarmAvgVigilantGrouped += agentAvgVigilantGrouped;
+	      
+	      if(swarmAgents[i]->fitness > swarmMaxFitness)
+		{
+		  swarmMaxFitness = swarmAgents[i]->fitness;
+		  bestSwarmAgent = swarmAgents[i];
+		}
+	    }
+	  
+	  swarmAvgFitness /= (double)populationSize;
+	  genAvgFitness.push_back(swarmAvgFitness);
+	  swarmAvgVigilance /= (double)populationSize;
+	  genAvgVigilance.push_back(swarmAvgVigilance);
+	  swarmAvgGrouped /= (double)populationSize;
+	  genAvgGrouped.push_back(swarmAvgGrouped);
+	  swarmAvgVigilantGrouped /= (double)populationSize;
+	  genAvgVigilantGrouped.push_back(swarmAvgVigilantGrouped);
+	  
+	  cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
+	  
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      // construct swarm agent population for the next generation
+	      tAgent *offspring = new tAgent;
+	      int j = 0;
+	      
+	      do
+		{
+		  j = rand() % populationSize;
+		} while((j == i) || (randDouble > (swarmAgents[j]->fitness / swarmMaxFitness)));
+	      
+	      offspring->inherit(swarmAgents[j], perSiteMutationRate, update);
+	      SANextGen[i] = offspring;
+	    }
+	  
+	  random_shuffle(SANextGen.begin(), SANextGen.end());
+	  
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      // retire and replace the swarm agents from the previous generation
+	      swarmAgents[i]->retire();
+	      swarmAgents[i]->nrPointingAtMe--;
+	      if(swarmAgents[i]->nrPointingAtMe == 0)
+		{
+		  delete swarmAgents[i];
+		}
+	      swarmAgents[i] = SANextGen[i];
+	    }
+	  
+	  swarmAgents = SANextGen;
+	  
+	  if (track_best_brains && update % track_best_brains_frequency == 0)
+	    {
+	      stringstream sss, pss;
+	      
+	      sss << "swarm" << update << ".genome";
+	      
+	      swarmAgents[0]->ancestor->ancestor->saveGenome(sss.str().c_str());
+	    }
+	}
+      
+      // save the genome file of the lmrca
+      swarmAgents[0]->ancestor->ancestor->saveGenome(swarmGenomeFileName.c_str());
+      
+      // save video and quantitative stats on the best swarm agent's LOD
+      vector<tAgent*> saveLOD;
+      
+      cout << "building ancestor list" << endl;
+      
+      // use 2 ancestors down from current population because that ancestor is highly likely to have high fitness
+      tAgent* curAncestor = swarmAgents[0]->ancestor->ancestor;
+      
+      while (curAncestor != NULL)
+	{
+	  // don't add the base ancestor
+	  if (curAncestor->ancestor != NULL)
+	    {
+	      saveLOD.insert(saveLOD.begin(), curAncestor);
+	    }
+	  
+	  curAncestor = curAncestor->ancestor;
+	}
+      
+      FILE *LOD = fopen(LODFileName.c_str(), "w");
+      
+      //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
+      fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped,average_time_vigilant_and_grouped\n");
+      
+      cout << "analyzing ancestor list" << endl;
+      
+      for (vector<tAgent*>::iterator it = saveLOD.begin(); it != saveLOD.end(); ++it)
+	{
+	  (*it)->setupPhenotype();
+	  double timeVigilant = 0;
+	  for(int i = 0; i < 1000; ++i)
+	       {
+		 (*it)->updateStates();
+		 if(((*it)->states[0] & 1) == 1)
+		   timeVigilant++;
+	       }
+	  timeVigilant = timeVigilant / 1000;
+	  fprintf(LOD, "%d,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(),
+		  genAvgGrouped.front(), genAvgVigilantGrouped.front());
+	  genAvgFitness.pop_front();
+	  genAvgVigilance.pop_front();
+	  genAvgGrouped.pop_front();
+	  genAvgVigilantGrouped.pop_front();
+	  // collect quantitative stats
+	  //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
+	   }
+      
+      cout << "finished analyzing ancestor list" << endl;
+      
+      fclose(LOD);
+    }
+  return 0;
 }
 
 string findBestRun(tAgent *swarmAgent)
