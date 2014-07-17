@@ -302,7 +302,8 @@ int main(int argc, char *argv[])
   game = new tGame;
   swarmAgent = new tAgent;
   swarmAgent->setupRandomAgent(5000);
-  
+
+  // setup is drastically different depending on 
   if(evolveGroupSize)
     {
       FILE *LOD = fopen(LODFileName.c_str(), "w");
@@ -333,7 +334,7 @@ int main(int argc, char *argv[])
 		{
 		  groupAgents[i][j]->inherit(groupAgents[i][0], 0.0, 1);
 		}
-	      // heterogeneous populations can have variation at the beginning
+	      // heterogeneous populations can have variation at setup
 	      else
 		{
 		  groupAgents[i][j]->inherit(swarmAgent, perSiteMutationRate, 1);
@@ -350,6 +351,7 @@ int main(int argc, char *argv[])
 	  double maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance, grpVigilance, agtVigilance = 0.0;
 	  for(int i = 0; i < populationSize; ++i)
 	    {
+	      // reset each member of the population before each update
 	      maxAgentFitnesses[i] = 0.0;
 	      groupFitnesses[i] = 0.0;
 	      grpVigilance = 0.0;
@@ -360,7 +362,7 @@ int main(int argc, char *argv[])
 	      // evaluate the fitness of the group
 	      game->executeGame(groupAgents[i], groupSizes[i], NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
 				groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
-	      // the fitness of the group size is the average of the group
+	      // fitness and vigilance values are evaluated across the agents in the group
 	      for(int j = 0; j < groupSizes[i]; ++j)
 		{
 		  agtVigilance = 0.0;
@@ -391,6 +393,7 @@ int main(int argc, char *argv[])
 	      grpVigilance /= groupSizes[i];
 	      avgVigilance += grpVigilance;
 	      avgGroupSize += groupSizes[i];
+	      // keep track of the group with the highest fitness
 	      if(maxGroupFitness < groupFitnesses[i])
 		{
 		  maxGroupFitness = groupFitnesses[i];
@@ -401,16 +404,19 @@ int main(int argc, char *argv[])
 	  avgFitness /= populationSize;
 	  avgGroupSize /= populationSize;
 	  avgVigilance /= populationSize;
+	  // print the experimental variables to an output file
 	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f\n", update, maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance);
 	  // construct group sizes for the next update
 	  for(int i = 0; i < populationSize; ++i)
 	    {
 	      int j = 0;
+	      // selection for which group will reproduce is fitness-proportional
 	      do
 		{
 		  j = rand() % populationSize;
 		} while((j == i) || (randDouble  > (groupFitnesses[j] / maxGroupFitness)));
 	      int newGroupSize = groupSizes[j];
+	      // group size can mutate according to a normal distribution with the current value as the mean
 	      if(randDouble < groupSizeMutationRate)
 		{
 		  do {
@@ -420,16 +426,19 @@ int main(int argc, char *argv[])
 		}
 	      GSnextGen[i] = newGroupSize;
 	      GAnextGen[i].resize(GSnextGen[i]);
+	      // if groups are homogeneous, construct groups based on a single agent
 	      if(homogeneous)
 		{
 		  tAgent* offspring = new tAgent;
 		  int l = 0;
+		  // although all agents should be identical, we go ahead and use fitness-proportional selection
 		  do
 		    {
 		      l = rand() % groupSizes[j];
 		    } while(randDouble > (groupAgents[j][l]->fitness / maxAgentFitnesses[j]));
 		  offspring->inherit(groupAgents[j][l], perSiteMutationRate, update);
 		  GAnextGen[i][0] = offspring;
+		  // fill the rest of the group with clones
 		  for(int k = 1; k < GSnextGen[i]; ++k)
 		    {
 		      tAgent* clone = new tAgent;
@@ -437,6 +446,7 @@ int main(int argc, char *argv[])
 		      GAnextGen[i][k] = clone;
 		    }
 		}
+	      // if groups are heterogeneous, agents are selected to pass on to the next generation based on fitness
 	      else
 		{
 		  for(int k = 0; k < GSnextGen[i]; ++k)
@@ -452,6 +462,7 @@ int main(int argc, char *argv[])
 		    }
 		}
 	    }
+	  // delete any old agents to save on memory
 	  for(int i = 0; i < populationSize; ++i)
 	    {
 	      for(int j = 0; j < groupSizes[i]; ++j)
@@ -465,6 +476,7 @@ int main(int argc, char *argv[])
 		}
 	      groupSizes[i] = GSnextGen[i];
 	      groupAgents[i].resize(groupSizes[i]);
+	      // copy over the agents to the next generation
 	      for(int j = 0; j < groupSizes[i]; ++j)
 		{
 		  groupAgents[i][j] = GAnextGen[i][j];
@@ -474,6 +486,7 @@ int main(int argc, char *argv[])
 	}
       fclose(LOD);
     }
+  // if we are not evolving the size of the group...
   else
     {
       // make mutated copies of the start genome to fill up the initial population
@@ -504,11 +517,13 @@ int main(int argc, char *argv[])
 	  double swarmAvgGrouped = 0.0;
 	  double swarmAvgVigilantGrouped = 0.0;
 	  
+	  // if groups are homogeneous, then each genotype is evaluated individually
 	  if(homogeneous)
 	    {
 	      for(int i = 0; i < populationSize; ++i)
 		{
 		  vector<tAgent*> gameGroup(groupSize);
+		  // copies of the genotype are made to fill the simulation
 		  for(int j = 0; j < groupSize; ++j)
 		    {
 		      gameGroup[j] = new tAgent;
@@ -516,6 +531,7 @@ int main(int argc, char *argv[])
 		    }
 		  game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
 				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+		  // the fitness of a genotype is the average of all the agents representing it in the simulation
 		  for(int j = 0; j < groupSize; ++j)
 		    {
 		      swarmAgents[i]->fitness += gameGroup[j]->fitness;
@@ -525,11 +541,14 @@ int main(int argc, char *argv[])
 		  gameGroup.clear();
 		}
 	    }
+	  // if groups are heterogeneous, then we can assign fitnesses to multiple genotypes at once
 	  else
 	    {
 	      int startAgent = 0;
+	      // we want to assign fitnesses to all members of the population
 	      while(startAgent < populationSize)
 		{
+		  // the first and last iterators represent the array of individuals to be placed in the simulation
 		  vector<tAgent*>::const_iterator first = swarmAgents.begin() + startAgent;
 		  vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
 		  vector<tAgent*> gameGroup(first, last);
@@ -539,7 +558,7 @@ int main(int argc, char *argv[])
 		  gameGroup.clear();
 		}
 	    }
-	  
+	  //many of our behaviors are averaged across all the members of the population
 	  for(int i = 0; i < populationSize; ++i)
 	    {
 	      swarmAvgFitness += swarmAgents[i]->fitness;
@@ -566,7 +585,7 @@ int main(int argc, char *argv[])
 	      swarmAvgGrouped += agentAvgGrouped;
 	      agentAvgVigilantGrouped /= 1000;
 	      swarmAvgVigilantGrouped += agentAvgVigilantGrouped;
-	      
+	      // we keep track of the individual with the highest fitness
 	      if(swarmAgents[i]->fitness > swarmMaxFitness)
 		{
 		  swarmMaxFitness = swarmAgents[i]->fitness;
@@ -585,21 +604,22 @@ int main(int argc, char *argv[])
 	  
 	  cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	  
+	  // we select individuals to reproduce into the next generation
 	  for(int i = 0; i < populationSize; ++i)
 	    {
-	      // construct swarm agent population for the next generation
 	      tAgent *offspring = new tAgent;
 	      int j = 0;
-	      
+	      // selection for reproduction is fitness-proportionate
 	      do
 		{
 		  j = rand() % populationSize;
 		} while((j == i) || (randDouble > (swarmAgents[j]->fitness / swarmMaxFitness)));
-	      
+	      // there is a chance of mutation upon reproduction
 	      offspring->inherit(swarmAgents[j], perSiteMutationRate, update);
 	      SANextGen[i] = offspring;
 	    }
 	  
+	  // we mix the population to ensure heterogeneous groups have different genotypes between updates
 	  random_shuffle(SANextGen.begin(), SANextGen.end());
 	  
 	  for(int i = 0; i < populationSize; ++i)
@@ -655,10 +675,12 @@ int main(int argc, char *argv[])
       
       cout << "analyzing ancestor list" << endl;
       
+      // we want to look at the ancestors of our most fit organism
       for (vector<tAgent*>::iterator it = saveLOD.begin(); it != saveLOD.end(); ++it)
 	{
 	  (*it)->setupPhenotype();
 	  double timeVigilant = 0;
+	  // measure vigilance behavior along the line-of-descent
 	  for(int i = 0; i < 1000; ++i)
 	       {
 		 (*it)->updateStates();

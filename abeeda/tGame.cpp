@@ -129,17 +129,22 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	/*       END OF DATA GATHERING       */
 	
 	/*       UPDATE PREDATOR       */
-	
+
+	// if the predator is on the scene, it either waits or makes an attack
 	if(predatorDelay == 0)
 	  {
+	    // if the predator has waited long enough, it makes an attack
 	    if(attackCounter == 0)
 	      {
+		// check to make sure there are still potential targest available
 		if(numAlive > 0)
 		  {
+		    // randomly select a target from the surviving prey
 		    int target;
 		    do {
 		      target = (int) (randDouble * swarmSize);
 		    } while(preyDead[target]);
+		    // if the target sees the predator coming, the attack success varies accordingly
 		    if(awareness[target])
 		      {
 			if(indvAwareKillProb > randDouble)
@@ -148,6 +153,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			    numAlive--;
 			  }
 		      }
+		    // if the target is unaware, see who else in the group is aware of the predator
 		    else
 		      {
 			int awareCount = 0;
@@ -163,8 +169,12 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 				  }
 			      }
 			  }
+			// if the target is in the group and the group sees the predator coming,
+			// the attack success varies accordingly
 			if(grouped[target] && groupAware)
 			  {
+			    // if the attack success depends on how many conspecifics are aware,
+			    // then make the attack accordingly
 			    if(incrementProbs)
 			      {
 				if((groupAwareKillProb - (groupAwareProbStep * awareCount)) > randDouble)
@@ -173,6 +183,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 				    numAlive--;
 				  }
 			      }
+			    // make a regular attack if we don't care about the number of aware conspecifics
 			    else
 			      {
 				if(groupAwareKillProb > randDouble)
@@ -182,6 +193,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 				  }
 			      }
 			  }
+			// if no one sees the predator coming, make the attack accordingly
 			else
 			  {
 			    if(unawareKillProb > randDouble)
@@ -192,18 +204,22 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			  }
 		      }
 		  }
+		// since an attack has been made, reset the delays
 		predatorDelay = newPredDelay();
 		attackCounter = attackDuration;
+		// once an attack is made, reset group awareness
 		for(int i = 0; i < swarmSize; ++i)
 		  {
 		    awareness[i] = false;
 		  }
 	      }
+	    // if the predator is not ready to make an attack, decrement the counter
 	    else
 	      {
 		attackCounter--;
 	      }
 	  }
+	// if the predator is not on the scene, decrement the counter
 	else
 	  {
 	    predatorDelay--;
@@ -211,8 +227,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
         
 	/*       END OF PREDATOR UPDATE       */
         
+	// count the number of prey in the group
 	int numGrouped = 0;
-
 	for(int i = 0; i < swarmSize; ++i)
 	  {
 	    if(grouped[i])
@@ -224,36 +240,45 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	/*       UPDATE SWARM       */
 	for(int i = 0; i < swarmSize; ++i)
 	  {
+	    // we do not update dead prey
 	    if (!preyDead[i])
 	      {
+		// if prey are non-vigilant, they get food
 		if(!vigilance[i])
 		  {
+		    // if the prey is in the group, any penalty is assessed
 		    if(grouped[i] && penalizeGrouping)
 		      {
 			swarm[i]->fitness += 1 / (groupingPenalty * numGrouped);
 		      }
+		    // otherwise, food intake is normal
 		    else
 		      {
 			swarm[i]->fitness += foragingFood;
 		      }
 		  }
+		// if the prey is vigilant, then it can see the predator and/or get some food
 		else
 		  {
+		    // if the predator is on the scene, the vigilant prey see it
 		    if(attackCounter == 0)
 		      {
 			awareness[i] = true;
 		      }
+		    // if the prey is in the group, a group penalty can be assessed on top of the vigilance penalty
 		    if(grouped[i] && penalizeGrouping)
 		      {
 			swarm[i]->fitness += vigilanceFood / (groupingPenalty * numGrouped);
 		      }
+		    // if the prey is not in the group, the prey get whatever food vigilant prey might receive
 		    else
 		      {
 			swarm[i]->fitness += vigilanceFood;
 		      }
 		  }
-		// activate each swarm agent's brain, determine its action for this update, and update its position and angle
+		// activate each swarm agent's brain and determine its action for this update
   		swarm[i]->updateStates();
+		// state 0 represents the decision to be vigilant
 		if((swarm[i]->states[0] & 1) == 1)
 		  {
 		    vigilance[i] = true;
@@ -262,8 +287,10 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    vigilance[i] = false;
 		  }
+		// we only care about the decision to group if that option is available
 		if(groupMode == CHOOSE_MODE)
 		  {
+		    // state 1 represents the decision to live in the group or not
 		    if((swarm[i]->states[1] & 1) == 1)
 		      {
 			grouped[i] = true;
@@ -280,6 +307,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
       }
     /*       END OF SIMULATION LOOP       */
   
+    // fitness is passed back to our original genomes and the copies are deleted
     for(int i = 0; i < swarmSize; ++i)
       {
 	if(!preyDead[i] || !zeroOutDeadPrey)
