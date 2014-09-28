@@ -105,8 +105,8 @@ int main(int argc, char *argv[])
   string LODFileName = "", swarmGenomeFileName = "", inputGenomeFileName = "";
   string swarmDotFileName = "", logicTableFileName = "";
   int displayDirectoryArgvIndex = 0;
-  deque<double> genAvgFitness,genAvgVigilance,genAvgGrouped,genAvgVigilantGrouped;  
-    
+  deque<double> genAvgFitness,genFitnessVar,genAvgVigilance,genVigilanceVar,genAvgGrouped,genGroupedVar,genAvgVigilantGrouped,genVigilantGroupedVar;
+
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
 
@@ -310,10 +310,8 @@ int main(int argc, char *argv[])
       
       fprintf(LOD, "generation,dom_group_fitness,dom_group_size,dom_group_vigilance,avg_group_fitness,avg_group_size,avg_group_vigilance\n");
       
-      int maxGroup = 0;
       int* groupSizes = new int[populationSize];
       int* GSnextGen = new int[populationSize];
-      double maxGroupFitness = 0.0;
       double* groupFitnesses = new double[populationSize];
       double* maxAgentFitnesses = new double[populationSize];
       // set up the initial sizes of each group
@@ -345,10 +343,12 @@ int main(int argc, char *argv[])
       cout << "setup complete" << endl;
       cout << "starting evolution" << endl;
 
+      double maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance, grpVigilance, agtVigilance;
+
       // main loop
       for(int update = 1; update <= totalGenerations; ++update)
 	{
-	  double maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance, grpVigilance, agtVigilance = 0.0;
+	  maxGroupFitness = domGroupSize = domVigilance = avgFitness = avgGroupSize = avgVigilance = grpVigilance = agtVigilance = 0.0;
 	  for(int i = 0; i < populationSize; ++i)
 	    {
 	      // reset each member of the population before each update
@@ -386,12 +386,20 @@ int main(int argc, char *argv[])
 		  testSubject->nrPointingAtMe--;
 		  delete testSubject;
 		  agtVigilance /= 1000;
+		  //cout << "AGENT VIGILANCE:" << endl;
+		  //cout << agtVigilance << endl;
 		  grpVigilance += agtVigilance;
+		  //cout << "GROWING GROUP VIGILANCE:" << endl;
+		  //cout << grpVigilance << endl;
 		}
 	      groupFitnesses[i] /= groupSizes[i];
 	      avgFitness += groupFitnesses[i];
 	      grpVigilance /= groupSizes[i];
+	      //cout << "GROUP VIGILANCE:" << endl;
+	      //cout << grpVigilance << endl;
 	      avgVigilance += grpVigilance;
+	      //cout << "GROWING AVERAGE VIGILANCE:" << endl;
+	      //cout << avgVigilance << endl;
 	      avgGroupSize += groupSizes[i];
 	      // keep track of the group with the highest fitness
 	      if(maxGroupFitness < groupFitnesses[i])
@@ -404,6 +412,8 @@ int main(int argc, char *argv[])
 	  avgFitness /= populationSize;
 	  avgGroupSize /= populationSize;
 	  avgVigilance /= populationSize;
+	  //cout << "***THE AVERAGE VIGILANCE***" << endl;
+	  //cout << avgVigilance << endl;
 	  // print the experimental variables to an output file
 	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f\n", update, maxGroupFitness, domGroupSize, domVigilance, avgFitness, avgGroupSize, avgVigilance);
 	  // construct group sizes for the next update
@@ -516,6 +526,14 @@ int main(int argc, char *argv[])
 	  double swarmAvgVigilance = 0.0;
 	  double swarmAvgGrouped = 0.0;
 	  double swarmAvgVigilantGrouped = 0.0;
+	  double swarmFitnessVar = 0.0;
+	  double swarmVigilanceVar = 0.0;
+	  double swarmGroupedVar = 0.0;
+	  double swarmVigilantGroupedVar = 0.0;
+	  double fitnesses[populationSize];
+	  double vigilances[populationSize];
+	  double groupings[populationSize];
+	  double vigilanceGroupings[populationSize];
 	  
 	  // if groups are homogeneous, then each genotype is evaluated individually
 	  if(homogeneous)
@@ -561,6 +579,7 @@ int main(int argc, char *argv[])
 	  //many of our behaviors are averaged across all the members of the population
 	  for(int i = 0; i < populationSize; ++i)
 	    {
+	      fitnesses[i] = swarmAgents[i]->fitness;
 	      swarmAvgFitness += swarmAgents[i]->fitness;
 	      
 	      swarmAgents[i]->setupPhenotype();
@@ -580,10 +599,13 @@ int main(int argc, char *argv[])
 		    agentAvgVigilantGrouped++;
 		}
 	      agentAvgVigilance /= 1000;
+	      vigilances[i] = agentAvgVigilance;
 	      swarmAvgVigilance += agentAvgVigilance;
 	      agentAvgGrouped /= 1000;
+	      groupings[i] = agentAvgGrouped;
 	      swarmAvgGrouped += agentAvgGrouped;
 	      agentAvgVigilantGrouped /= 1000;
+	      vigilanceGroupings[i] = agentAvgVigilantGrouped;
 	      swarmAvgVigilantGrouped += agentAvgVigilantGrouped;
 	      // we keep track of the individual with the highest fitness
 	      if(swarmAgents[i]->fitness > swarmMaxFitness)
@@ -601,6 +623,24 @@ int main(int argc, char *argv[])
 	  genAvgGrouped.push_back(swarmAvgGrouped);
 	  swarmAvgVigilantGrouped /= (double)populationSize;
 	  genAvgVigilantGrouped.push_back(swarmAvgVigilantGrouped);
+
+	  // we calculate variances for each of the metrics
+	  for(int i = 0; i < populationSize; ++i)
+	    {
+	      swarmFitnessVar += pow(fitnesses[i] - swarmAvgFitness, 2);
+	      swarmVigilanceVar += pow(vigilances[i] - swarmAvgVigilance, 2);
+	      swarmGroupedVar += pow(groupings[i] - swarmAvgGrouped, 2);
+	      swarmVigilantGroupedVar += pow(vigilanceGroupings[i] - swarmAvgVigilantGrouped, 2);
+	    }
+
+	  swarmFitnessVar /= (double)populationSize;
+	  genFitnessVar.push_back(swarmFitnessVar);
+	  swarmVigilanceVar /= (double)populationSize;
+	  genVigilanceVar.push_back(swarmVigilanceVar);
+	  swarmGroupedVar /= (double)populationSize;
+	  genGroupedVar.push_back(swarmGroupedVar);
+	  swarmVigilantGroupedVar /= (double)populationSize;
+	  genVigilantGroupedVar.push_back(swarmVigilantGroupedVar);
 	  
 	  cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	  
@@ -671,7 +711,7 @@ int main(int argc, char *argv[])
       FILE *LOD = fopen(LODFileName.c_str(), "w");
       
       //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-      fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,average_fitness,average_time_grouped,average_time_vigilant_and_grouped\n");
+      fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,time_vigilant_variance,average_fitness,fitness_variance,average_time_grouped,time_grouped_variance,average_time_vigilant_and_grouped,time_vigilant_and_grouped_variance\n");
       
       cout << "analyzing ancestor list" << endl;
       
@@ -688,12 +728,17 @@ int main(int argc, char *argv[])
 		   timeVigilant++;
 	       }
 	  timeVigilant = timeVigilant / 1000;
-	  fprintf(LOD, "%d,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genAvgFitness.front(),
-		  genAvgGrouped.front(), genAvgVigilantGrouped.front());
+	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genVigilanceVar.front(),
+		  genAvgFitness.front(), genFitnessVar.front(), genAvgGrouped.front(), genGroupedVar.front(), genAvgVigilantGrouped.front(),
+		  genVigilantGroupedVar.front());
 	  genAvgFitness.pop_front();
+	  genFitnessVar.pop_front();
 	  genAvgVigilance.pop_front();
+	  genVigilanceVar.pop_front();
 	  genAvgGrouped.pop_front();
+	  genGroupedVar.pop_front();
 	  genAvgVigilantGrouped.pop_front();
+	  genVigilantGroupedVar.pop_front();
 	  // collect quantitative stats
 	  //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
 	   }

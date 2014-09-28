@@ -63,8 +63,6 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
     
     vector<double> numPreyVigilant;
 
-    int predatorDelay = newPredDelay();
-    int attackCounter = attackDuration;
     if(relativeAttackRate)
       {
 	attackDelayMean = (int) (totalStepsInSimulation / (attackRate * swarmSize));
@@ -73,6 +71,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
       {
 	attackDelayMean = attackRate;
       }
+    int predatorDelay = 0;
+    int attackCounter = attackDuration;
 
     // set of all prey brains
     tAgent* swarm[swarmSize];
@@ -249,7 +249,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		    // if the prey is in the group, any penalty is assessed
 		    if(grouped[i] && penalizeGrouping)
 		      {
-			swarm[i]->fitness += 1 / (groupingPenalty * numGrouped);
+			swarm[i]->fitness += 1 / pow(numGrouped, groupingPenalty);
 		      }
 		    // otherwise, food intake is normal
 		    else
