@@ -494,6 +494,24 @@ int main(int argc, char *argv[])
 	    }
 	  cout << "generation " << update << ": swarm [" << (int)avgFitness << " : " << (int)maxGroupFitness << "]" << endl;
 	}
+      delete [] groupFitnesses;
+      delete [] maxAgentFitnesses;
+      for(int i = 0; i < populationSize; ++i)
+	{
+	  for(int j = 0; j < GAnextGen[i].size(); ++j)
+	    {
+	      GAnextGen[i][j]->retire();
+	      GAnextGen[i][j]->nrPointingAtMe--;
+	      if(GAnextGen[i][j]->nrPointingAtMe == 0)
+		{
+		  delete GAnextGen[i][j];
+		}
+	    }
+	}
+      delete [] groupSizes;
+      delete [] GSnextGen;
+      delete [] groupAgents;
+      delete [] GAnextGen;
       fclose(LOD);
     }
   // if we are not evolving the size of the group...
@@ -741,12 +759,14 @@ int main(int argc, char *argv[])
 	  genVigilantGroupedVar.pop_front();
 	  // collect quantitative stats
 	  //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
-	   }
+	}
       
       cout << "finished analyzing ancestor list" << endl;
       
       fclose(LOD);
     }
+  delete game;
+  delete swarmAgent;
   return 0;
 }
 

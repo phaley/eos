@@ -102,7 +102,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	swarm[i] = new tAgent();
 	swarm[i]->inherit(swarmAgents[i], 0.0, 0);
 	swarm[i]->setupPhenotype();
-	swarm[i]->fitness = 0.0;
+	swarm[i]->fitness = 1.0;
 	preyDead[i] = false;
 	vigilance[i] = false;
 	awareness[i] = false;
@@ -268,7 +268,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		    // if the prey is in the group, a group penalty can be assessed on top of the vigilance penalty
 		    if(grouped[i] && penalizeGrouping)
 		      {
-			swarm[i]->fitness += vigilanceFood / (groupingPenalty * numGrouped);
+			swarm[i]->fitness += vigilanceFood / pow(numGrouped, groupingPenalty);
 		      }
 		    // if the prey is not in the group, the prey get whatever food vigilant prey might receive
 		    else
