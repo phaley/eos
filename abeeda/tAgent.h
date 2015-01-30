@@ -26,6 +26,9 @@
 #include "tHMM.h"
 #include <vector>
 
+#define maxGroupSizeMean     20
+#define maxGroupSizeRange    20
+
 using namespace std;
 
 static int masterID = 0;
@@ -46,13 +49,15 @@ public:
 #endif
 	
 	tAgent *ancestor;
-    tAgent *predator;
+	tAgent *predator;
 	unsigned int nrPointingAtMe;
 	unsigned char states[maxNodes],newStates[maxNodes];
 	double fitness,convFitness;
 	vector<double> fitnesses;
 	int food;
 	
+	int maxGroupSize;
+
 	double xPos,yPos,direction;
 	double sX,sY;
 	bool foodAlreadyFound;
@@ -69,7 +74,7 @@ public:
 	void loadAgent(char* filename);
 	void loadAgentWithTrailer(char* filename);
 	void setupPhenotype(void);
-    void setupMegaPhenotype(int howMany);
+	void setupMegaPhenotype(int howMany);
 	void inherit(tAgent *from,double mutationRate,int theTime);
 	unsigned char * getStatesPointer(void);
 	void updateStates(void);
@@ -79,7 +84,8 @@ public:
 	void showPhenotype(void);
 	void saveToDot(const char *filename, bool predator);
 	void saveToDotFullLayout(char *filename);
-	
+
+	void newMaxGroupSize(int mean);
 	void initialize(int x, int y, int d);
 	tAgent* findLMRCA(void);
 	void saveFromLMRCAtoNULL(FILE *statsFile,FILE *genomeFile);

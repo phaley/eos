@@ -38,7 +38,7 @@
 
 #define attackDuration          5
 #define attackDelayRange        10/2
-#define totalStepsInSimulation  2000
+#define totalStepsInSimulation  10000
 
 // precalculated lookup tables for the game
 double cosLookup[360];
@@ -54,7 +54,7 @@ tGame::~tGame() { }
 // runs the simulation for the given agent(s)
 string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *data_file, bool report, double confusionMultiplier,
 			  double vigilanceFoodPenalty, bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate,
-			  bool penalizeGrouping, double groupingPenalty, double foragingFood)
+			  bool penalizeGrouping, double groupingPenalty, double foragingFood, bool maxGroupSize)
 {
     // LOD data variables
     double swarmFitness = 0.0;
@@ -108,7 +108,10 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	awareness[i] = false;
 	receivedBroadcast[i] = false;
 	sentBroadcast[i] = false;
-	grouped[i] = (groupMode == FORCED_GROUP) ? true : false;
+	if(maxGroupSize)
+	  grouped[i] = (randDouble > 0.5) ? true : false;
+	else
+	  grouped[i] = (groupMode == FORCED_GROUP) ? true : false;
       }
     
     for(int step = 0; step < totalStepsInSimulation; ++step)
@@ -141,65 +144,71 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    // randomly select a target from the surviving prey
 		    int target;
+		    target = (int) (randDouble * swarmSize); // allow the predator to target dead prey
+		    /*
 		    do {
 		      target = (int) (randDouble * swarmSize);
 		    } while(preyDead[target]);
-		    // if the target sees the predator coming, the attack success varies accordingly
-		    if(awareness[target])
+		    */
+		    if(!preyDead[target])
 		      {
-			if(indvAwareKillProb > randDouble)
+			// if the target sees the predator coming, the attack success varies accordingly
+			if(awareness[target])
 			  {
-			    preyDead[target] = true;
-			    numAlive--;
-			  }
-		      }
-		    // if the target is unaware, see who else in the group is aware of the predator
-		    else
-		      {
-			int awareCount = 0;
-			bool groupAware = false;
-			for(int i = 0; i < swarmSize; ++i)
-			  {
-			    if(grouped[i])
-			      {
-				if(awareness[i])
-				  {
-				    awareCount++;
-				    groupAware = true;
-				  }
-			      }
-			  }
-			// if the target is in the group and the group sees the predator coming,
-			// the attack success varies accordingly
-			if(grouped[target] && groupAware)
-			  {
-			    // if the attack success depends on how many conspecifics are aware,
-			    // then make the attack accordingly
-			    if(incrementProbs)
-			      {
-				if((groupAwareKillProb - (groupAwareProbStep * awareCount)) > randDouble)
-				  {
-				    preyDead[target] = true;
-				    numAlive--;
-				  }
-			      }
-			    // make a regular attack if we don't care about the number of aware conspecifics
-			    else
-			      {
-				if(groupAwareKillProb > randDouble)
-				  {
-				    preyDead[target] = true;
-				    numAlive--;
-				  }
-			      }
-			  }
-			// if no one sees the predator coming, make the attack accordingly
-			else
-			  {
-			    if(unawareKillProb > randDouble)
+			    if(indvAwareKillProb > randDouble)
 			      {
 				preyDead[target] = true;
 				numAlive--;
+			      }
+			  }
+			// if the target is unaware, see who else in the group is aware of the predator
+			else
+			  {
+			    int awareCount = 0;
+			    bool groupAware = false;
+			    for(int i = 0; i < swarmSize; ++i)
+			      {
+				if(grouped[i])
+				  {
+				    if(awareness[i])
+				      {
+					awareCount++;
+					groupAware = true;
+				      }
+				  }
+			      }
+			    // if the target is in the group and the group sees the predator coming,
+			    // the attack success varies accordingly
+			    if(grouped[target] && groupAware)
+			      {
+				// if the attack success depends on how many conspecifics are aware,
+				// then make the attack accordingly
+				if(incrementProbs)
+				  {
+				    if((groupAwareKillProb - (groupAwareProbStep * awareCount)) > randDouble)
+				      {
+					preyDead[target] = true;
+					numAlive--;
+				      }
+				  }
+				// make a regular attack if we don't care about the number of aware conspecifics
+				else
+				  {
+				    if(groupAwareKillProb > randDouble)
+				      {
+					preyDead[target] = true;
+					numAlive--;
+				      }
+				  }
+			      }
+			    // if no one sees the predator coming, make the attack accordingly
+			    else
+			      {
+				if(unawareKillProb > randDouble)
+				  {
+				    preyDead[target] = true;
+				    numAlive--;
+				  }
 			      }
 			  }
 		      }
@@ -236,6 +245,8 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		numGrouped++;
 	      }
 	  }
+	if(step < 10)
+	  cout << "Grouped: " << numGrouped << endl;
 
 	/*       UPDATE SWARM       */
 	for(int i = 0; i < swarmSize; ++i)
@@ -287,8 +298,19 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    vigilance[i] = false;
 		  }
+		if(maxGroupSize && (swarm[i]->states[1] & 1) == 1)
+		  {
+		    if(swarm[i]->maxGroupSize > numGrouped)
+		      {
+			grouped[i] = true;
+		      }
+		    else
+		      {
+			grouped[i] = false;
+		      }
+		  }
 		// we only care about the decision to group if that option is available
-		if(groupMode == CHOOSE_MODE)
+		else if(groupMode == CHOOSE_MODE)
 		  {
 		    // state 1 represents the decision to live in the group or not
 		    if((swarm[i]->states[1] & 1) == 1)
@@ -342,7 +364,7 @@ int tGame::newPredDelay(void) {
     int delay;
     do {
       int sign = randDouble > 0.5 ? 1 : -1;
-      delay = (((int) sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble)) * attackDelayRange * sign) + attackDelayMean;
+      delay = ((int) (sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble) * attackDelayRange) * sign) + attackDelayMean;
     } while(delay <= 0);
     return delay;
 }

@@ -29,12 +29,12 @@
 tAgent::tAgent(){
 	nrPointingAtMe=1;
 	ancestor = NULL;
-    predator = NULL;
+	predator = NULL;
 	for(int i=0;i<maxNodes;i++)
-    {
-		states[i]=0;
-		newStates[i]=0;
-	}
+	  {
+	    states[i]=0;
+	    newStates[i]=0;
+	  }
 	bestSteps=-1;
 	ID=masterID;
 	masterID++;
@@ -43,7 +43,9 @@ tAgent::tAgent(){
 	nrOfOffspring=0;
 	retired=false;
 	food=0;
-    totalSteps=0;
+	totalSteps=0;
+	maxGroupSize=-1;
+	newMaxGroupSize(maxGroupSizeMean); 
 #ifdef useANN
 	ANN=new tANN;
 #endif
@@ -135,33 +137,40 @@ void tAgent::ampUpStartCodons(void)
 
 void tAgent::inherit(tAgent *from, double mutationRate, int theTime)
 {
-	int nucleotides=(int)from->genome.size();
-	int i,s,o,w;
-	//double localMutationRate=4.0/from->genome.size();
-	vector<unsigned char> buffer;
-	born=theTime;
-	ancestor=from;
-	from->nrPointingAtMe++;
-	from->nrOfOffspring++;
-	genome.clear();
-	genome.resize(from->genome.size());
-    
-	for(i=0;i<nucleotides;i++)
+  int nucleotides=(int)from->genome.size();
+  int i,s,o,w;
+  //double localMutationRate=4.0/from->genome.size();
+  vector<unsigned char> buffer;
+  born=theTime;
+  ancestor=from;
+  from->nrPointingAtMe++;
+  from->nrOfOffspring++;
+  genome.clear();
+  genome.resize(from->genome.size());
+  
+  if(mutationRate != 0.0)
     {
-		if (randDouble < mutationRate)
+      if(randDouble < 0.05)
+	newMaxGroupSize(from->maxGroupSize);
+      else
+	maxGroupSize = from->maxGroupSize;
+    }
+  for(i=0;i<nucleotides;i++)
+    {
+      if (randDouble < mutationRate)
         {
-			genome[i]=rand()&255;
+	  genome[i]=rand()&255;
         }
-		else
+      else
         {
-			genome[i]=from->genome[i];
+	  genome[i]=from->genome[i];
         }
     }
-    
+  
     if (mutationRate != 0.0)
-    {
+      {
         if ( (randDouble < 0.05) && (genome.size() < 20000) )
-        {
+	  {
             //duplication
             w=15+rand()&511;
             s=rand()%((int)genome.size()-w);
@@ -169,20 +178,20 @@ void tAgent::inherit(tAgent *from, double mutationRate, int theTime)
             buffer.clear();
             buffer.insert(buffer.begin(),genome.begin()+s,genome.begin()+s+w);
             genome.insert(genome.begin()+o,buffer.begin(),buffer.end());
-        }
+	  }
         if ( (randDouble < 0.02) && (genome.size() > 1000) )
-        {
+	  {
             //deletion
             w=15+rand()&511;
             s=rand()%((int)genome.size()-w);
             genome.erase(genome.begin()+s,genome.begin()+s+w);
-        }
-    }
-
-	//setupPhenotype();
-	fitness=0.0;
+	  }
+      }
+    
+    //setupPhenotype();
+    fitness=0.0;
 #ifdef useANN
-	ANN->inherit(ancestor->ANN,mutationRate);
+    ANN->inherit(ancestor->ANN,mutationRate);
 #endif
 }
 
@@ -258,6 +267,13 @@ void tAgent::setupMegaPhenotype(int howMany)
     
 }
 
+void tAgent::newMaxGroupSize(int mean)
+{
+  do {
+    int sign = randDouble > 0.5 ? 1 : -1;
+    maxGroupSize = ((int) (sqrt(-2 * log(randDouble)) * cos(2 * cPI * randDouble) * maxGroupSizeRange) * sign) + mean;
+  } while(maxGroupSize <= 0);
+}
 
 void tAgent::retire(void)
 {

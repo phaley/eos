@@ -77,6 +77,7 @@ int     groupSizeRange              = 10;
 int     totalGenerations            = 2000;
 tGame   *game                       = NULL;
 
+bool    maxGroupSize                = false;
 bool    evolveGroupSize             = false;
 bool    homogeneous                 = false;
 bool    zeroOutDeadPrey             = false;
@@ -105,7 +106,8 @@ int main(int argc, char *argv[])
   string LODFileName = "", swarmGenomeFileName = "", inputGenomeFileName = "";
   string swarmDotFileName = "", logicTableFileName = "";
   int displayDirectoryArgvIndex = 0;
-  deque<double> genAvgFitness,genFitnessVar,genAvgVigilance,genVigilanceVar,genAvgGrouped,genGroupedVar,genAvgVigilantGrouped,genVigilantGroupedVar;
+  deque<double> genAvgFitness,genFitnessVar,genAvgVigilance,genVigilanceVar,genAvgGrouped,genGroupedVar,
+    genAvgVigilantGrouped,genVigilantGroupedVar,genAvgMaxGroupSize,genMaxGroupSizeVar;
 
   // time-based seed by default. can change with command-line parameter.
   srand((unsigned int)time(NULL));
@@ -295,6 +297,11 @@ int main(int argc, char *argv[])
 	{
 	  evolveGroupSize = true;
 	}
+      // -mgs: give each agent a maximum group size (will group if current size <= agent's max)
+      else if (strcmp(argv[i], "-mgs") == 0)
+	{
+	  maxGroupSize = true;
+	}
     }
   
   // initial object setup
@@ -361,7 +368,7 @@ int main(int argc, char *argv[])
 		}
 	      // evaluate the fitness of the group
 	      game->executeGame(groupAgents[i], groupSizes[i], NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+				groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood, maxGroupSize);
 	      // fitness and vigilance values are evaluated across the agents in the group
 	      for(int j = 0; j < groupSizes[i]; ++j)
 		{
@@ -544,10 +551,12 @@ int main(int argc, char *argv[])
 	  double swarmAvgVigilance = 0.0;
 	  double swarmAvgGrouped = 0.0;
 	  double swarmAvgVigilantGrouped = 0.0;
+	  double swarmAvgMaxGroupSize = 0.0;
 	  double swarmFitnessVar = 0.0;
 	  double swarmVigilanceVar = 0.0;
 	  double swarmGroupedVar = 0.0;
 	  double swarmVigilantGroupedVar = 0.0;
+	  double swarmMaxGroupSizeVar = 0.0;
 	  double fitnesses[populationSize];
 	  double vigilances[populationSize];
 	  double groupings[populationSize];
@@ -566,7 +575,7 @@ int main(int argc, char *argv[])
 		      gameGroup[j]->inherit(swarmAgents[i], 0.0, 0);
 		    }
 		  game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood, maxGroupSize);
 		  // the fitness of a genotype is the average of all the agents representing it in the simulation
 		  for(int j = 0; j < groupSize; ++j)
 		    {
@@ -589,7 +598,7 @@ int main(int argc, char *argv[])
 		  vector<tAgent*>::const_iterator last = swarmAgents.begin() + startAgent + groupSize;
 		  vector<tAgent*> gameGroup(first, last);
 		  game->executeGame(gameGroup, groupSize, NULL, false, confusionMultiplier, vigilanceFoodPenalty, zeroOutDeadPrey,
-				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood);
+				    groupMode, relativeAttackRate, attackRate, penalizeGrouping, groupingPenalty, foragingFood, maxGroupSize);
 		  startAgent += groupSize;
 		  gameGroup.clear();
 		}
@@ -631,6 +640,7 @@ int main(int argc, char *argv[])
 		  swarmMaxFitness = swarmAgents[i]->fitness;
 		  bestSwarmAgent = swarmAgents[i];
 		}
+	      swarmAvgMaxGroupSize += swarmAgents[i]->maxGroupSize;
 	    }
 	  
 	  swarmAvgFitness /= (double)populationSize;
@@ -641,6 +651,8 @@ int main(int argc, char *argv[])
 	  genAvgGrouped.push_back(swarmAvgGrouped);
 	  swarmAvgVigilantGrouped /= (double)populationSize;
 	  genAvgVigilantGrouped.push_back(swarmAvgVigilantGrouped);
+	  swarmAvgMaxGroupSize /= (double) populationSize;
+	  genAvgMaxGroupSize.push_back(swarmAvgMaxGroupSize);
 
 	  // we calculate variances for each of the metrics
 	  for(int i = 0; i < populationSize; ++i)
@@ -649,6 +661,7 @@ int main(int argc, char *argv[])
 	      swarmVigilanceVar += pow(vigilances[i] - swarmAvgVigilance, 2);
 	      swarmGroupedVar += pow(groupings[i] - swarmAvgGrouped, 2);
 	      swarmVigilantGroupedVar += pow(vigilanceGroupings[i] - swarmAvgVigilantGrouped, 2);
+	      swarmMaxGroupSizeVar += pow(swarmAgents[i]->maxGroupSize - swarmAvgMaxGroupSize, 2);
 	    }
 
 	  swarmFitnessVar /= (double)populationSize;
@@ -659,7 +672,9 @@ int main(int argc, char *argv[])
 	  genGroupedVar.push_back(swarmGroupedVar);
 	  swarmVigilantGroupedVar /= (double)populationSize;
 	  genVigilantGroupedVar.push_back(swarmVigilantGroupedVar);
-	  
+	  swarmMaxGroupSizeVar /= (double)populationSize;
+	  genMaxGroupSizeVar.push_back(swarmMaxGroupSizeVar);
+ 
 	  cout << "generation " << update << ": swarm [" << (int)swarmAvgFitness << " : " << (int)swarmMaxFitness << "]" << endl;
 	  
 	  // we select individuals to reproduce into the next generation
@@ -729,7 +744,7 @@ int main(int argc, char *argv[])
       FILE *LOD = fopen(LODFileName.c_str(), "w");
       
       //fprintf(LOD, "generation,prey_fitness,num_alive_end,num_prey_vigilant\n");
-      fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,time_vigilant_variance,average_fitness,fitness_variance,average_time_grouped,time_grouped_variance,average_time_vigilant_and_grouped,time_vigilant_and_grouped_variance\n");
+      fprintf(LOD, "generation,line_of_descent_time_vigilant,average_time_vigilant,time_vigilant_variance,average_fitness,fitness_variance,average_time_grouped,time_grouped_variance,average_time_vigilant_and_grouped,time_vigilant_and_grouped_variance,average_max_group_size,max_group_size_variance\n");
       
       cout << "analyzing ancestor list" << endl;
       
@@ -746,9 +761,9 @@ int main(int argc, char *argv[])
 		   timeVigilant++;
 	       }
 	  timeVigilant = timeVigilant / 1000;
-	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genVigilanceVar.front(),
+	  fprintf(LOD, "%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n", (*it)->born, timeVigilant, genAvgVigilance.front(), genVigilanceVar.front(),
 		  genAvgFitness.front(), genFitnessVar.front(), genAvgGrouped.front(), genGroupedVar.front(), genAvgVigilantGrouped.front(),
-		  genVigilantGroupedVar.front());
+		  genVigilantGroupedVar.front(), genAvgMaxGroupSize.front(), genMaxGroupSizeVar.front());
 	  genAvgFitness.pop_front();
 	  genFitnessVar.pop_front();
 	  genAvgVigilance.pop_front();
@@ -757,6 +772,8 @@ int main(int argc, char *argv[])
 	  genGroupedVar.pop_front();
 	  genAvgVigilantGrouped.pop_front();
 	  genVigilantGroupedVar.pop_front();
+	  genAvgMaxGroupSize.pop_front();
+	  genMaxGroupSizeVar.pop_front();
 	  // collect quantitative stats
 	  //game->executeGame(*it, LOD, false, killDelay, confusionMultiplier, vigilanceFoodPenalty);
 	}

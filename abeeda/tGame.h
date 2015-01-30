@@ -54,7 +54,7 @@ public:
     void loadExperiment(char *filename);
     string executeGame(vector<tAgent*> & swarmAgents, int groupSize, FILE *data_file, bool report, double confusionMultiplier,
 		       double vigilanceFoodPenalty, bool zeroOutDeadPrey, int groupMode, bool relativeAttackRate, int attackRate,
-		       bool penalizeGrouping, double groupingPenalty, double foragingFood);
+		       bool penalizeGrouping, double groupingPenalty, double foragingFood, bool maxGroupSize);
     tGame();
     ~tGame();
     int newPredDelay(void);
