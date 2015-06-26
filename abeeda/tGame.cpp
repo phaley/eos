@@ -38,7 +38,7 @@
 
 #define attackDuration          5
 #define attackDelayRange        10/2
-#define totalStepsInSimulation  10000
+#define totalStepsInSimulation  5000
 
 // precalculated lookup tables for the game
 double cosLookup[360];
@@ -65,7 +65,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 
     if(relativeAttackRate)
       {
-	attackDelayMean = (int) (totalStepsInSimulation / (attackRate * swarmSize));
+	attackDelayMean = (int) ((totalStepsInSimulation - (attackDuration * attackRate * swarmSize)) / (attackRate * swarmSize));
       }
     else
       {
@@ -144,12 +144,12 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		  {
 		    // randomly select a target from the surviving prey
 		    int target;
-		    target = (int) (randDouble * swarmSize); // allow the predator to target dead prey
-		    /*
+		    //target = (int) (randDouble * swarmSize); // allow the predator to target dead prey
+		    
 		    do {
 		      target = (int) (randDouble * swarmSize);
 		    } while(preyDead[target]);
-		    */
+		    
 		    if(!preyDead[target])
 		      {
 			// if the target sees the predator coming, the attack success varies accordingly
@@ -168,7 +168,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			    bool groupAware = false;
 			    for(int i = 0; i < swarmSize; ++i)
 			      {
-				if(grouped[i])
+				if(!preyDead[i] && grouped[i])
 				  {
 				    if(awareness[i])
 				      {
@@ -212,8 +212,12 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 			      }
 			  }
 		      }
-		  }
-		// since an attack has been made, reset the delays
+		  }		
+
+		if(numAlive > 0) {
+		  attackDelayMean = (int) ((totalStepsInSimulation - (attackDuration * numAlive * attackRate)) / (attackRate * numAlive)); // adjust attack rate each time
+		}
+
 		predatorDelay = newPredDelay();
 		attackCounter = attackDuration;
 		// once an attack is made, reset group awareness
@@ -240,13 +244,14 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 	int numGrouped = 0;
 	for(int i = 0; i < swarmSize; ++i)
 	  {
-	    if(grouped[i])
+	    if(!preyDead[i] && grouped[i])
 	      {
 		numGrouped++;
 	      }
 	  }
-	if(step < 10)
-	  cout << "Grouped: " << numGrouped << endl;
+
+	//	if(step == 1999)
+	//cout << "Grouped: " << (((double) numAlive) / swarmSize) << endl;
 
 	/*       UPDATE SWARM       */
 	for(int i = 0; i < swarmSize; ++i)
@@ -257,15 +262,19 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		// if prey are non-vigilant, they get food
 		if(!vigilance[i])
 		  {
-		    // if the prey is in the group, any penalty is assessed
-		    if(grouped[i] && penalizeGrouping)
+		    if(!preyDead[i])
 		      {
-			swarm[i]->fitness += 1 / pow(numGrouped, groupingPenalty);
-		      }
-		    // otherwise, food intake is normal
-		    else
-		      {
-			swarm[i]->fitness += foragingFood;
+			// if the prey is in the group, any penalty is assessed
+			if(grouped[i] && penalizeGrouping)
+			  {
+			    swarm[i]->fitness += foragingFood / pow(numGrouped, groupingPenalty);
+			    //swarm[i]->fitness += foragingFood / (numGrouped * groupingPenalty);
+			  }
+			// otherwise, food intake is normal
+			else
+			  {
+			    swarm[i]->fitness += foragingFood;
+			  }
 		      }
 		  }
 		// if the prey is vigilant, then it can see the predator and/or get some food
@@ -280,6 +289,7 @@ string tGame::executeGame(vector<tAgent*> & swarmAgents, int swarmSize, FILE *da
 		    if(grouped[i] && penalizeGrouping)
 		      {
 			swarm[i]->fitness += vigilanceFood / pow(numGrouped, groupingPenalty);
+			//swarm[i]->fitness += vigilanceFood / (numGrouped * groupingPenalty);
 		      }
 		    // if the prey is not in the group, the prey get whatever food vigilant prey might receive
 		    else
