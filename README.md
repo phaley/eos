@@ -47,13 +47,62 @@ The following parameters can be passed to EOS:
 * -sd [int]: set swarm safety distance (default: 30)
 * -pva [int]: set predator vision angle (default: 180)
 * -kd [int]: set predator kill attempt delay (default: 10)
+* -cm [float]: set predator confusion multiplier (default: 1.0)
+* -vfp [float]: set prey penalty to food when vigilant (default: 1.0, range: [0,1])
+* -pop [float]: set population size for the GA
+* -gsz [float]: set group size for the evaluation
+* -cln: set evaluation to work on clones of genotypes (default: heterogeneous, with flag: homogeneous)
+* -zdp: use to zero out the fitness of prey that die (default: iteroparous, with flag: semelparous)
+* -aar [float]: set absolute attack rate for the evaluation
+* -rar [float]: set attacks per individual for the evaluation
+* -grp [float]: set grouping mode for the evaluation (0 is forced grouping, 1 is forced ungrouping, 2 is choose to group)
+* -gp [float]: penalize grouping relative to gruop size (default: 1.0, range: [0,1])
+* -ff [float]: set the amount of food a non-vigilant prey receives
+* -egs: set program to evolve group sizes in addition to agents
+* -mgs: give each agent a maximum group size (will group if current size <= agent's max)
 
--e, -d, -dd, -dfs, or -dfp must be passed to EOS, otherwise it will not do anything by default.
+Experimental Replication
+====================
+
+To replicate the experiments in the Royal Society Open Science paper, use the following command:
+
+./eos -e ${OUTDIR}/csvs/${RUN}LOD.csv ${OUTDIR}/genomes/${RUN}swarm.genome -s ${PBS_ARRAYID} -g 2500 -pop 100 -gsz ${GROUPSIZE} -rar 05 -grp ${GROUPMODE} -ff 1.0 -vfp 1.0 -gp ${GROUPPENALTY}
+
+Variables:
+* ARRAYID: run at 1 through 100
+* GROUPSIZE: run at sizes 05, 10, 25, 50
+* GROUPMODE: run at 0 (grouped), 1 (individual), and 2 (optional)
+* GROUPPENALTY: run at 0 (without -gp flag), 1, and 1000
+
+For the four treatments:
+* Heterogeneous/Iteroparous: no flags
+* Heterogeneous/Semelparous: -zdp flag
+* Homogeneous/Iteroparous: -cln flag
+* Homogeneous/Semelparous: -zdp and -cln flags
 
 Output
 ====================
 
 EOS produces a variety of output files, detailed below.
+
+CSV Files
+---------------------
+
+File storing per generation data across the duration of the run.
+
+Columns:
+* Generation
+* LOD Vigilance: vigilance of ancestor organisms of the final dominant genotype
+* Average Vigilance: percentage time vigilant averaged across all the genotypes in the population
+* Vigilance Variance: variance of the previous value
+* Average Fitness:fitness averaged across all the genotypes in the population
+* Fitness Variance: variance of the previous value
+* Average Grouping: percentage time gruoped averaged across all the genotypes in the population
+* Grouping Variance: variance of the previous value
+* Average Vigilance & Grouping: percentage time vigilant while grouped averaged across all the genotypes in the population
+* Vigilance & Grouping Variance: variance of the previous value
+* Average Maximum Group Size: maximum group size averaged across all the genotypes in the population
+* Maximum Group Size Variance: variance of the previous value
 
 LOD files
 ---------------------
